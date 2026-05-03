@@ -102,6 +102,8 @@ As the administrator, you manage the platform:
 2.  **WebRTC Masking:** By default, P2P WebRTC connections may expose public IP addresses. It is strongly recommended to configure a STUN/TURN server (like `coturn`) in `src/hooks/useVoiceChat.ts` for absolute anonymity.
 3.  **No Persistence on GitHub:** The `.gitignore` is strictly configured to ignore the `data/` directory. Your encrypted messages, keys, and configurations will never be pushed to version control.
 
+(NOTE: its a vibe coding project)
+
 ---
 <div align="center">
   <p><i>Developed with security and elegance in mind.</i></p>
