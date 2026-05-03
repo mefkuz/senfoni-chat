@@ -28,10 +28,10 @@ Senfoni Chat is an ultra-secure, terminal-styled messaging platform designed for
 
 ```mermaid
 graph TD
-    Client1[Client A<br/>Browser WebCrypto] <-->|E2EE Encrypted Payload| Server[Next.js API Routes<br/>Polling & WebRTC Signaling]
-    Client2[Client B<br/>Browser WebCrypto] <-->|E2EE Encrypted Payload| Server
-    Server <-->|AEAD AES-256-GCM| FileDB[(Encrypted File System<br/>data/*.json)]
-    Client1 <..>|WebRTC P2P Voice| Client2
+    Client1["Client A (Browser WebCrypto)"] <-->|E2EE Encrypted Payload| Server["Next.js API Routes (Signaling)"]
+    Client2["Client B (Browser WebCrypto)"] <-->|E2EE Encrypted Payload| Server
+    Server <-->|AEAD AES-256-GCM| FileDB[("Encrypted File System (data/*.json)")]
+    Client1 ---|WebRTC P2P Voice| Client2
 ```
 
 ---
