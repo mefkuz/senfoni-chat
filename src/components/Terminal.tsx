@@ -37,6 +37,14 @@ export default function Terminal() {
   const [expiry, setExpiry]         = useState('--:--');
   const [history, setHistory]       = useState<string[]>([]);
   const [historyIdx, setHistoryIdx] = useState(-1);
+  const [theme, setTheme]           = useState<string>('default');
+
+  // Load theme
+  useEffect(() => {
+    const t = localStorage.getItem('sfn_theme') || 'default';
+    setTheme(t);
+    document.documentElement.setAttribute('data-theme', t);
+  }, []);
 
   // Load command history
   useEffect(() => {
@@ -57,8 +65,13 @@ export default function Terminal() {
     username, apiKey, add as any
   );
 
+  const hasCheckedSetup = useRef(false);
+
   // Setup Check
   useEffect(() => {
+    if (hasCheckedSetup.current) return;
+    hasCheckedSetup.current = true;
+
     fetch('/api/setup').then(r => r.json()).then(d => {
       if (d.uninitialized) {
         add('System uninitialized. No admin found.', 'error');
@@ -216,6 +229,7 @@ export default function Terminal() {
         add('/whoami                  Show identity');
         add('/voice                   Toggle voice chat');
         add('/voice-mute              Toggle mic mute');
+        add('/theme [name]            Change theme (default, matrix, ocean, hacker-pink, red-alert, solarized, synthwave, ghost)');
         add('/clear                   Clear buffer');
         add('/quit                    Terminate session');
         if (role === 'admin') {
@@ -349,6 +363,24 @@ export default function Terminal() {
 
       case '/clear': setLogs([]); break;
       case '/quit': doQuit(); break;
+
+      case '/theme': {
+        const available = ['default', 'matrix', 'ocean', 'hacker-pink', 'red-alert', 'solarized', 'synthwave', 'ghost'];
+        if (!args[0]) {
+          add('Available themes: ' + available.join(', '));
+          break;
+        }
+        const t = args[0].toLowerCase();
+        if (available.includes(t)) {
+          setTheme(t);
+          localStorage.setItem('sfn_theme', t);
+          document.documentElement.setAttribute('data-theme', t);
+          add(`Theme changed to [${t}]`, 'success');
+        } else {
+          add(`ERR: Theme [${t}] not found.`, 'error');
+        }
+        break;
+      }
 
       // ── Moderator ──────────────────────────────────────────────────────────
       case '/create-user': {

@@ -2,12 +2,6 @@
 
 /* ─── Design Tokens ─────────────────────────────────────────────────────── */
 :root {
-  --bg:         #070500;
-  --surface:    #0b0900;
-  --surface2:   #100d02;
-  --border:     #1e1900;
-  --border2:    #2a2300;
-
   --amber:      #e8b800;
   --amber-dim:  #7a6000;
   --amber-glow: rgba(232, 184, 0, 0.08);
@@ -18,11 +12,120 @@
   --green:      #00e88f;
   --red:        #ff4055;
   --orange:     #ff8c00;
-  --dim:        #4a4020;
-  --dim2:       #6a5a28;
-
+  
   --mono: 'JetBrains Mono', 'Courier New', monospace;
   --sans: 'Inter', system-ui, sans-serif;
+
+  /* Default (Amber/Senfoni) */
+  --bg:         #070500;
+  --surface:    #0b0900;
+  --surface2:   #100d02;
+  --border:     #1e1900;
+  --border2:    #2a2300;
+  --primary:    var(--amber);
+  --primary-dim:var(--amber-dim);
+  --primary-glow: var(--amber-glow);
+  --primary-faint: var(--amber-faint);
+  --dim:        #4a4020;
+  --dim2:       #6a5a28;
+}
+
+[data-theme='matrix'] {
+  --bg:         #000500;
+  --surface:    #000800;
+  --surface2:   #001200;
+  --border:     #002200;
+  --border2:    #003300;
+  --primary:    #00ff41;
+  --primary-dim:#008f11;
+  --primary-glow: rgba(0, 255, 65, 0.08);
+  --primary-faint: rgba(0, 255, 65, 0.03);
+  --dim:        #003b00;
+  --dim2:       #005c00;
+}
+
+[data-theme='ocean'] {
+  --bg:         #000810;
+  --surface:    #000c18;
+  --surface2:   #001428;
+  --border:     #002440;
+  --border2:    #003660;
+  --primary:    #00e5ff;
+  --primary-dim:#007b99;
+  --primary-glow: rgba(0, 229, 255, 0.08);
+  --primary-faint: rgba(0, 229, 255, 0.03);
+  --dim:        #004466;
+  --dim2:       #006688;
+}
+
+[data-theme='hacker-pink'] {
+  --bg:         #0a0005;
+  --surface:    #12000a;
+  --surface2:   #1a0010;
+  --border:     #30001e;
+  --border2:    #4a002e;
+  --primary:    #ff0099;
+  --primary-dim:#99005c;
+  --primary-glow: rgba(255, 0, 153, 0.08);
+  --primary-faint: rgba(255, 0, 153, 0.03);
+  --dim:        #5c003d;
+  --dim2:       #8a005c;
+}
+
+[data-theme='red-alert'] {
+  --bg:         #0d0000;
+  --surface:    #1a0000;
+  --surface2:   #260000;
+  --border:     #4d0000;
+  --border2:    #660000;
+  --primary:    #ff3030;
+  --primary-dim:#990000;
+  --primary-glow: rgba(255, 48, 48, 0.1);
+  --primary-faint: rgba(255, 48, 48, 0.04);
+  --dim:        #4d0000;
+  --dim2:       #800000;
+}
+
+[data-theme='solarized'] {
+  --bg:         #002b36;
+  --surface:    #073642;
+  --surface2:   #003844;
+  --border:     #586e75;
+  --border2:    #657b83;
+  --primary:    #859900;
+  --primary-dim:#586e75;
+  --primary-glow: rgba(133, 153, 0, 0.1);
+  --primary-faint: rgba(133, 153, 0, 0.04);
+  --dim:        #657b83;
+  --dim2:       #839496;
+}
+
+[data-theme='synthwave'] {
+  --bg:         #140628;
+  --surface:    #24143c;
+  --surface2:   #341c50;
+  --border:     #ff00ff;
+  --border2:    #7200d0;
+  --primary:    #00ffff;
+  --primary-dim:#ff00ff;
+  --primary-glow: rgba(0, 255, 255, 0.12);
+  --primary-faint: rgba(0, 255, 255, 0.05);
+  --dim:        #7200d0;
+  --dim2:       #b000ff;
+}
+
+[data-theme='ghost'] {
+  --bg:         #000000;
+  --surface:    #0a0a0a;
+  --surface2:   #111111;
+  --border:     #222222;
+  --border2:    #333333;
+  --primary:    #ffffff;
+  --primary-dim:#666666;
+  --primary-glow: rgba(255, 255, 255, 0.08);
+  --primary-faint: rgba(255, 255, 255, 0.03);
+  --dim:        #444444;
+  --dim2:       #888888;
 }
 
 /* ─── Reset ─────────────────────────────────────────────────────────────── */
@@ -31,7 +134,7 @@
 html, body {
   height: 100%;
   background: var(--bg);
-  color: var(--amber);
+  color: var(--primary);
   font-family: var(--mono);
   overflow: hidden;
 }
@@ -91,7 +194,7 @@ html, body {
   gap: 8px;
   font-size: 0.85rem;
   font-weight: 500;
-  color: var(--amber);
+  color: var(--primary);
   margin-top: 4px;
 }
 
@@ -137,18 +240,18 @@ html, body {
 }
 
 .sb-room:hover {
-  background: var(--amber-faint);
-  color: var(--amber);
-  border-left-color: var(--amber-dim);
+  background: var(--primary-faint);
+  color: var(--primary);
+  border-left-color: var(--primary-dim);
 }
 
 .sb-room.active {
-  background: var(--amber-glow);
-  color: var(--amber);
-  border-left-color: var(--amber);
+  background: var(--primary-glow);
+  color: var(--primary);
+  border-left-color: var(--primary);
 }
 
-.sb-hash { color: var(--amber-dim); font-weight: 600; }
+.sb-hash { color: var(--primary-dim); font-weight: 600; }
 .sb-rname { flex: 1; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
 
 .sb-voice-user {
@@ -214,7 +317,7 @@ html, body {
 .sb-timer {
   font-size: 1rem;
   font-weight: 600;
-  color: var(--amber);
+  color: var(--primary);
   margin: 4px 0 6px;
   letter-spacing: 0.05em;
 }
@@ -248,13 +351,13 @@ html, body {
   font-size: 0.9rem;
   font-weight: 700;
   letter-spacing: 0.15em;
-  color: var(--amber);
-  text-shadow: 0 0 20px rgba(232,184,0,0.4);
+  color: var(--primary);
+  text-shadow: 0 0 20px var(--primary-glow);
 }
 
 .hdr-thin {
   font-weight: 300;
-  color: var(--amber-dim);
+  color: var(--primary-dim);
 }
 
 .hdr-right {
@@ -269,7 +372,7 @@ html, body {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: var(--amber);
+  color: var(--primary);
 }
 
 .hdr-dot {
@@ -349,8 +452,8 @@ html, body {
 
 /* Log type colors */
 .ll.system  .ll-text { color: var(--dim2); }
-.ll.user    .ll-text { color: var(--amber); opacity: 0.85; }
-.ll.msg     .ll-text { color: var(--amber); }
+.ll.user    .ll-text { color: var(--primary); opacity: 0.85; }
+.ll.msg     .ll-text { color: var(--primary); }
 .ll.admin   .ll-text { color: var(--cyan); }
 .ll.error   .ll-text { color: var(--red); }
 .ll.success .ll-text { color: var(--green); }
@@ -366,9 +469,9 @@ html, body {
 
 /* ─── Blinking cursor ─────────────────────────────────────────────────────── */
 .blink {
-  color: var(--amber);
+  color: var(--primary);
   animation: blink-anim 1s step-end infinite;
-  text-shadow: 0 0 10px var(--amber);
+  text-shadow: 0 0 10px var(--primary);
 }
 
 @keyframes blink-anim {
@@ -394,7 +497,7 @@ html, body {
 .sfn-prompt {
   font-family: var(--mono);
   font-size: 0.82rem;
-  color: var(--amber-dim);
+  color: var(--primary-dim);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -404,11 +507,11 @@ html, body {
   background: transparent;
   border: none;
   outline: none;
-  color: var(--amber);
+  color: var(--primary);
   font-family: var(--mono);
   font-size: 0.85rem;
-  caret-color: var(--amber);
-  text-shadow: 0 0 8px rgba(232,184,0,0.3);
+  caret-color: var(--primary);
+  text-shadow: 0 0 8px var(--primary-glow);
 }
 
 .sfn-input::placeholder { color: var(--dim); }
