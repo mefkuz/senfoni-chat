@@ -5,7 +5,7 @@ import {
   getAllRooms, createRoom, deleteRoom,
   kickUser, unkickUser, muteUser, unmuteUser, isMuted,
 } from '@/lib/db';
-import { MELODI_API_KEY, ADMIN_USERNAME } from '@/lib/constants';
+import { ADMIN_USERNAME } from '@/lib/constants';
 import crypto from 'crypto';
 
 const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
@@ -35,7 +35,8 @@ export async function POST(request: Request) {
     }
 
     // Admin-only below
-    if (masterKey !== MELODI_API_KEY) {
+    const admin = masterKey ? getUserByApiKey(masterKey) : null;
+    if (!admin || admin.role !== 'admin') {
       await delay(1000);
       return NextResponse.json({ error: 'ACCESS_DENIED' }, { status: 403 });
     }
@@ -111,7 +112,8 @@ export async function POST(request: Request) {
 
 export async function GET(request: Request) {
   const masterKey = request.headers.get('X-Senfoni-Key');
-  if (masterKey !== MELODI_API_KEY) {
+  const admin = masterKey ? getUserByApiKey(masterKey) : null;
+  if (!admin || admin.role !== 'admin') {
     await delay(1000);
     return NextResponse.json({ error: 'ACCESS_DENIED' }, { status: 403 });
   }
