@@ -330,6 +330,7 @@ export default function Terminal() {
           add('  /gen-api [name]');
           add('  /list-users');
           add('  /create-room [name]');
+          add('  /create-voice-room [name]');
           add('  /delete-room [name]');
           add('  /list-rooms');
           add('  /kick [user] [room]   Ban user from room');
@@ -797,6 +798,20 @@ export default function Terminal() {
               }}
               autoFocus spellCheck={false}
               autoComplete="off" autoCapitalize="off" placeholder={busy?'processing...':''} disabled={busy} />
+            {username && (
+              <button 
+                type="button" 
+                className="sfn-upload-btn" 
+                onClick={() => {
+                  if (!activeRoom) { add('ERR: Join a room first.', 'error'); return; }
+                  fileInputRef.current?.click();
+                }}
+                disabled={busy}
+                title="Upload file or image"
+              >
+                📎
+              </button>
+            )}
           </form>
           <div className="sfn-bar">
             <span>END-TO-END ENCRYPTED</span><span>·</span><span>SENFONI SECURE PROTOCOL</span>

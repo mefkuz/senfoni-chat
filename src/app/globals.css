@@ -568,3 +568,24 @@ html, body {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+/* ─── Upload Button ──────────────────────────────────────────────────────── */
+.sfn-upload-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s, transform 0.1s;
+  padding: 0 4px;
+}
+
+.sfn-upload-btn:hover:not(:disabled) {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.sfn-upload-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
