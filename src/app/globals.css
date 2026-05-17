@@ -526,3 +526,45 @@ html, body {
   color: var(--dim);
   letter-spacing: 0.08em;
 }
+
+/* ─── File Previews ──────────────────────────────────────────────────────── */
+.sfn-file-preview {
+  margin-top: 6px;
+  margin-bottom: 4px;
+}
+
+.sfn-img {
+  max-width: 300px;
+  max-height: 250px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  object-fit: contain;
+  background: rgba(0,0,0,0.2);
+  display: block;
+}
+
+.sfn-file-btn {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--primary);
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.sfn-file-btn:hover:not(:disabled) {
+  background: var(--primary-faint);
+  border-color: var(--primary-dim);
+}
+
+.sfn-file-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

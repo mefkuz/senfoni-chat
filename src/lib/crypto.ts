@@ -72,11 +72,41 @@ export async function decryptMessage(ciphertext: string, iv: string, key: Crypto
   return dec.decode(decrypted);
 }
 
+/**
+ * Encrypts binary file data using a derived CryptoKey.
+ * Returns base64-encoded ciphertext and IV.
+ */
+export async function encryptFile(data: ArrayBuffer, key: CryptoKey): Promise<{ ciphertext: string; iv: string }> {
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encrypted = await crypto.subtle.encrypt(
+    { name: ALGO, iv },
+    key,
+    data
+  );
+  return {
+    ciphertext: b64Encode(encrypted),
+    iv: b64Encode(iv),
+  };
+}
+
+/**
+ * Decrypts base64-encoded encrypted file data using a derived CryptoKey.
+ * Returns the original ArrayBuffer.
+ */
+export async function decryptFile(ciphertext: string, iv: string, key: CryptoKey): Promise<ArrayBuffer> {
+  const decrypted = await crypto.subtle.decrypt(
+    { name: ALGO, iv: b64Decode(iv) },
+    key,
+    b64Decode(ciphertext)
+  );
+  return decrypted;
+}
+
 // Helper functions for base64 encoding/decoding
-function b64Encode(buffer: ArrayBuffer | Uint8Array): string {
+export function b64Encode(buffer: ArrayBuffer | Uint8Array): string {
   return btoa(String.fromCharCode(...new Uint8Array(buffer)));
 }
 
-function b64Decode(str: string): Uint8Array {
+export function b64Decode(str: string): Uint8Array {
   return new Uint8Array(atob(str).split('').map(c => c.charCodeAt(0)));
 }

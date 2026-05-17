@@ -2,13 +2,14 @@
  * Senfoni Chat — File-Based Persistence Layer (db.ts)
  * =====================================================
  * data/users.json, data/rooms.json, data/messages/*.json,
- * data/kicks.json, data/mutes.json, data/voice/*.json
+ * data/kicks.json, data/mutes.json, data/voice/*.json,
+ * data/files/*.enc (encrypted file blobs)
  */
 
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import { ADMIN_USERNAME, MAX_MESSAGES_PER_ROOM } from './constants';
+import { ADMIN_USERNAME, MAX_MESSAGES_PER_ROOM, MAX_FILES_PER_ROOM } from './constants';
 
 const DATA_DIR     = path.join(process.cwd(), 'data');
 const USERS_FILE   = path.join(DATA_DIR, 'users.json');
@@ -17,6 +18,7 @@ const KICKS_FILE   = path.join(DATA_DIR, 'kicks.json');
 const MUTES_FILE   = path.join(DATA_DIR, 'mutes.json');
 const MESSAGES_DIR = path.join(DATA_DIR, 'messages');
 const VOICE_DIR    = path.join(DATA_DIR, 'voice');
+const FILES_DIR    = path.join(DATA_DIR, 'files');
 const PRESENCE_FILE = path.join(DATA_DIR, 'presence.json');
 
 const SERVER_KEY_FILE = path.join(DATA_DIR, 'server.key');
@@ -74,6 +76,11 @@ export interface RoomRecord {
 export interface MessageRecord {
   id: string; room: string; ciphertext: string; iv: string;
   sender: string; timestamp: number;
+  // File attachment metadata (client-encrypted payload is in ciphertext/iv)
+  fileId?: string;
+  fileName?: string;
+  fileType?: string;
+  fileSize?: number;
 }
 export interface MuteRecord {
   username: string; until: number; by: string; reason: string;
@@ -86,10 +93,22 @@ export interface VoicePresence {
   [roomHash: string]: { [username: string]: number };
 }
 
+export interface FileRecord {
+  id: string;
+  room: string;
+  sender: string;
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  encryptedData: string;  // Client-side E2EE encrypted base64 data
+  encryptedIv: string;    // Client-side E2EE IV
+  timestamp: number;
+}
+
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
 export function ensureDataDir(): void {
-  [DATA_DIR, MESSAGES_DIR, VOICE_DIR].forEach(d => {
+  [DATA_DIR, MESSAGES_DIR, VOICE_DIR, FILES_DIR].forEach(d => {
     if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
   });
   if (!fs.existsSync(USERS_FILE)) {
@@ -183,6 +202,9 @@ export function deleteRoom(roomHash: string): boolean {
   if (fs.existsSync(f)) fs.unlinkSync(f);
   const vf = path.join(VOICE_DIR, `${roomHash}.json`);
   if (fs.existsSync(vf)) fs.unlinkSync(vf);
+  // Clean up room files index
+  const ff = path.join(FILES_DIR, `${roomHash}.json`);
+  if (fs.existsSync(ff)) fs.unlinkSync(ff);
   return true;
 }
 
@@ -204,6 +226,51 @@ export function saveMessage(msg: Omit<MessageRecord, 'id'>): MessageRecord {
   const trimmed = msgs.length > MAX_MESSAGES_PER_ROOM ? msgs.slice(-MAX_MESSAGES_PER_ROOM) : msgs;
   writeJson(f, trimmed);
   return newMsg;
+}
+
+// ─── File Storage (E2EE encrypted blobs) ──────────────────────────────────────
+
+/**
+ * Save an E2EE encrypted file blob.
+ * The file data is already encrypted client-side, we store it server-side
+ * with additional AEAD envelope encryption.
+ */
+export function saveFile(file: Omit<FileRecord, 'id'>): FileRecord {
+  validateHash(file.room);
+  ensureDataDir();
+  
+  const id = crypto.randomUUID();
+  const record: FileRecord = { id, ...file };
+  
+  // Store file index per room
+  const indexFile = path.join(FILES_DIR, `${file.room}.json`);
+  const records = fs.existsSync(indexFile) ? readJson<FileRecord[]>(indexFile, []) : [];
+  records.push(record);
+  
+  // Trim old files if over limit
+  const trimmed = records.length > MAX_FILES_PER_ROOM ? records.slice(-MAX_FILES_PER_ROOM) : records;
+  writeJson(indexFile, trimmed);
+  
+  return record;
+}
+
+/**
+ * Get a file record by ID from a room.
+ */
+export function getFile(roomHash: string, fileId: string): FileRecord | null {
+  validateHash(roomHash);
+  const indexFile = path.join(FILES_DIR, `${roomHash}.json`);
+  const records = readJson<FileRecord[]>(indexFile, []);
+  return records.find(r => r.id === fileId) ?? null;
+}
+
+/**
+ * List all file records for a room.
+ */
+export function getRoomFiles(roomHash: string): FileRecord[] {
+  validateHash(roomHash);
+  const indexFile = path.join(FILES_DIR, `${roomHash}.json`);
+  return readJson<FileRecord[]>(indexFile, []);
 }
 
 // ─── Kicks ────────────────────────────────────────────────────────────────────

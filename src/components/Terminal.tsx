@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { encryptMessage, decryptMessage, deriveKey } from '@/lib/crypto';
-import { POLLING_INTERVAL_MS, SESSION_TIMEOUT_MS, APP_VERSION } from '@/lib/constants';
+import { encryptMessage, decryptMessage, deriveKey, encryptFile, decryptFile, b64Encode } from '@/lib/crypto';
+import { POLLING_INTERVAL_MS, SESSION_TIMEOUT_MS, APP_VERSION, MAX_FILE_SIZE_BYTES } from '@/lib/constants';
 import { useVoiceChat } from '@/hooks/useVoiceChat';
 
-interface LogEntry { id: string; text: string; type: 'system'|'user'|'admin'|'error'|'msg'|'success'|'warn'; time: string; isOwn?: boolean; status?: 'sending'|'sent'; }
+interface LogEntry { id: string; text: string; type: 'system'|'user'|'admin'|'error'|'msg'|'success'|'warn'; time: string; isOwn?: boolean; status?: 'sending'|'sent'; file?: { id: string, name: string, type: string, size: number, dataUrl?: string, loading?: boolean, error?: boolean }; }
 interface RoomInfo { name: string; roomHash: string; type?: 'text'|'voice'; activeUsers?: string[]; }
 interface ActiveRoom { name: string; hash: string; cryptoKey: CryptoKey; }
 
@@ -56,6 +56,7 @@ export default function Terminal() {
 
   const outputRef = useRef<HTMLDivElement>(null);
   const inputRef  = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const add = useCallback((text: string, type: LogEntry['type'] = 'system') => {
     setLogs(p => [...p, { id: uid(), text, type, time: ts() }]);
@@ -133,7 +134,12 @@ export default function Terminal() {
           seenIds.add(m.id);
           try {
             const plain = await decryptMessage(m.ciphertext, m.iv, activeRoom.cryptoKey);
-            entries.push({ id: uid(), text: `${m.sender}: ${plain}`, type: 'msg', time: new Date(m.timestamp).toLocaleTimeString('en-US', { hour12: false, hour:'2-digit', minute:'2-digit', second:'2-digit' }), isOwn: m.sender === username, status: 'sent' });
+            const entry: LogEntry = { id: uid(), text: `${m.sender}: ${plain}`, type: 'msg', time: new Date(m.timestamp).toLocaleTimeString('en-US', { hour12: false, hour:'2-digit', minute:'2-digit', second:'2-digit' }), isOwn: m.sender === username, status: 'sent' };
+            if (m.fileId) {
+              entry.file = { id: m.fileId, name: m.fileName, type: m.fileType, size: m.fileSize };
+              entry.text = `${m.sender}: [Sent File]`;
+            }
+            entries.push(entry);
             if (m.timestamp > maxTs) maxTs = m.timestamp;
           } catch {}
         }
@@ -182,6 +188,90 @@ export default function Terminal() {
     }
   }
 
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = ''; // Reset input
+    
+    if (!activeRoom || !apiKey || !username) { add('ERR: Join a room first.', 'error'); return; }
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      add(`ERR: File too large (Max ${Math.round(MAX_FILE_SIZE_BYTES/1024/1024)}MB)`, 'error');
+      return;
+    }
+
+    const msgId = uid();
+    setLogs(p => [...p, { id: msgId, text: `${username}: Uploading ${file.name}...`, type: 'msg', time: ts(), isOwn: true, status: 'sending' }]);
+    setBusy(true);
+    try {
+      const buffer = await file.arrayBuffer();
+      const enc = await encryptFile(buffer, activeRoom.cryptoKey);
+      
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Caller-Key': apiKey },
+        body: JSON.stringify({
+          room: activeRoom.hash,
+          sender: username,
+          fileName: file.name,
+          fileType: file.type || 'application/octet-stream',
+          fileSize: file.size,
+          encryptedData: enc.ciphertext,
+          encryptedIv: enc.iv
+        }),
+      });
+      const d = await res.json();
+      if (d.error) {
+        setLogs(p => p.map(l => l.id === msgId ? { ...l, status: undefined, type: 'error', text: `ERR: ${d.error}` } : l));
+      } else {
+        if (d.messageId) seenIds.add(d.messageId);
+        setLogs(p => p.map(l => l.id === msgId ? { 
+          ...l, 
+          status: 'sent', 
+          text: `${username}: [Sent File]`,
+          file: { id: d.fileId, name: file.name, type: file.type || 'application/octet-stream', size: file.size }
+        } : l));
+      }
+    } catch (err) {
+      setLogs(p => p.map(l => l.id === msgId ? { ...l, status: undefined, type: 'error', text: 'ERR: UPLOAD_FAILED' } : l));
+    } finally {
+      setBusy(false);
+      inputRef.current?.focus();
+    }
+  };
+
+  const handleFileAction = async (msgId: string, fileInfo: NonNullable<LogEntry['file']>) => {
+    if (!activeRoom || !apiKey) return;
+    
+    setLogs(p => p.map(l => l.id === msgId ? { ...l, file: { ...l.file!, loading: true } } : l));
+    
+    try {
+      const res = await fetch(`/api/files?room=${activeRoom.hash}&id=${fileInfo.id}`, {
+        headers: { 'X-Caller-Key': apiKey }
+      });
+      const d = await res.json();
+      
+      if (d.error || !d.encryptedData) throw new Error(d.error || 'Failed to fetch file');
+      
+      const decryptedBuffer = await decryptFile(d.encryptedData, d.encryptedIv, activeRoom.cryptoKey);
+      const blob = new Blob([decryptedBuffer], { type: d.fileType || 'application/octet-stream' });
+      const dataUrl = URL.createObjectURL(blob);
+      
+      setLogs(p => p.map(l => l.id === msgId ? { ...l, file: { ...l.file!, loading: false, dataUrl } } : l));
+      
+      // If it's not an image, trigger download automatically
+      if (!d.fileType?.startsWith('image/')) {
+        const a = document.createElement('a');
+        a.href = dataUrl;
+        a.download = d.fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+    } catch (err) {
+      setLogs(p => p.map(l => l.id === msgId ? { ...l, file: { ...l.file!, loading: false, error: true } } : l));
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const raw = input.trim();
@@ -229,6 +319,7 @@ export default function Terminal() {
         add('/whoami                  Show identity');
         add('/voice                   Toggle voice chat');
         add('/voice-mute              Toggle mic mute');
+        add('/upload                  Send an encrypted file/image');
         add('/theme [name]            Change theme (default, matrix, ocean, hacker-pink, red-alert, solarized, synthwave, ghost)');
         add('/clear                   Clear buffer');
         add('/quit                    Terminate session');
@@ -299,7 +390,12 @@ export default function Terminal() {
             for (const m of hist) {
               try {
                 const plain = await decryptMessage(m.ciphertext, m.iv, cKey);
-                entries.push({ id: uid(), text: `${m.sender}: ${plain}`, type: 'msg', time: new Date(m.timestamp).toLocaleTimeString('en-US', { hour12: false, hour:'2-digit', minute:'2-digit', second:'2-digit' }), isOwn: m.sender === username, status: 'sent' });
+                const entry: LogEntry = { id: uid(), text: `${m.sender}: ${plain}`, type: 'msg', time: new Date(m.timestamp).toLocaleTimeString('en-US', { hour12: false, hour:'2-digit', minute:'2-digit', second:'2-digit' }), isOwn: m.sender === username, status: 'sent' };
+                if (m.fileId) {
+                  entry.file = { id: m.fileId, name: m.fileName, type: m.fileType, size: m.fileSize };
+                  entry.text = `${m.sender}: [Sent File]`;
+                }
+                entries.push(entry);
                 ids.add(m.id);
                 if (m.timestamp > maxTs) maxTs = m.timestamp;
               } catch {}
@@ -359,6 +455,11 @@ export default function Terminal() {
       case '/voice-mute':
         if (!voiceState.isActive) { add('ERR: Voice not active.', 'error'); break; }
         toggleMute();
+        break;
+        
+      case '/upload':
+        if (!activeRoom || !apiKey || !username) { add('ERR: Join a room first.', 'error'); break; }
+        fileInputRef.current?.click();
         break;
 
       case '/clear': setLogs([]); break;
@@ -650,6 +751,17 @@ export default function Terminal() {
               {log.type === 'warn'    && <span className="ll-badge warn">[warn]</span>}
               <span className="ll-text">
                 {log.text}
+                {log.file && (
+                  <div className="sfn-file-preview">
+                    {log.file.type.startsWith('image/') && log.file.dataUrl ? (
+                      <img src={log.file.dataUrl} alt={log.file.name} className="sfn-img" />
+                    ) : (
+                      <button className="sfn-file-btn" onClick={() => handleFileAction(log.id, log.file!)} disabled={log.file.loading || log.file.error}>
+                        {log.file.loading ? '⏳ Decrypting...' : log.file.error ? '❌ Decrypt Failed' : log.file.dataUrl ? '💾 Download Again' : `📄 ${log.file.name} (${Math.round(log.file.size/1024)}KB)`}
+                      </button>
+                    )}
+                  </div>
+                )}
                 {log.isOwn && log.status === 'sending' && <span className="ll-tick sending"> 🕒</span>}
                 {log.isOwn && log.status === 'sent' && <span className="ll-tick sent"> ✓✓</span>}
               </span>
@@ -690,6 +802,7 @@ export default function Terminal() {
             <span>END-TO-END ENCRYPTED</span><span>·</span><span>SENFONI SECURE PROTOCOL</span>
           </div>
         </footer>
+        <input type="file" ref={fileInputRef} onChange={handleFileChange} style={{display: 'none'}} />
       </div>
     </div>
   );

@@ -21,8 +21,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'INVALID_USERNAME' }, { status: 400 });
     }
 
-    const { apiKey, error } = createUser(username.trim(), 'system', 'admin');
-    if (error) return NextResponse.json({ error }, { status: 400 });
+    const res = createUser(username.trim(), 'system', 'admin');
+    if ('error' in res) return NextResponse.json({ error: res.error }, { status: 400 });
+    const apiKey = res.apiKey;
 
     // Since this is the first user, we must elevate them to admin directly
     // Wait, createUser sets role to 'user' by default. We need to manually update it to 'admin'.
