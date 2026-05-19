@@ -239,6 +239,26 @@ export default function Terminal() {
     }
   }, [logs]);
 
+  // Force instant scroll to bottom when switching rooms
+  useEffect(() => {
+    if (!activeRoom || !outputRef.current) return;
+    
+    const scrollInstant = () => {
+      if (outputRef.current) {
+        outputRef.current.scrollTop = outputRef.current.scrollHeight;
+      }
+    };
+    
+    scrollInstant();
+    const t1 = setTimeout(scrollInstant, 50);
+    const t2 = setTimeout(scrollInstant, 150);
+    
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [activeRoom]);
+
   // Session timer
   useEffect(() => {
     if (!loginTime) { setExpiry('--:--'); return; }
