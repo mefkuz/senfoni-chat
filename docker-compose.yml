@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  senfoni-chat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: senfoni-chat
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - senfoni-data:/app/data
+
+volumes:
+  senfoni-data:
+    name: senfoni-chat-data
