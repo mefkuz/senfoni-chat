@@ -13,6 +13,80 @@ let _c = 0;
 const uid = () => `l${++_c}`;
 const ts = () => new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
+function playNotificationSound(isMention: boolean = false) {
+  if (typeof window === 'undefined') return;
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    
+    if (isMention) {
+      // Futuristic double-ping chime for mentions
+      const playPing = (time: number, freq: number) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, time);
+        gain.gain.setValueAtTime(0.08, time);
+        gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.3);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(time);
+        osc.stop(time + 0.3);
+      };
+      const now = ctx.currentTime;
+      playPing(now, 880);      // A5
+      playPing(now + 0.08, 1320); // E6 double-chirp
+    } else {
+      // Gentle retro terminal click/ping for general messages
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(659.25, ctx.currentTime); // E5
+      gain.gain.setValueAtTime(0.05, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.12);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.12);
+    }
+  } catch {}
+}
+
+function requestNotificationPermission() {
+  if (typeof window !== 'undefined' && 'Notification' in window) {
+    if (Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }
+}
+
+function triggerPushNotification(title: string, body: string) {
+  if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted' && document.hidden) {
+    try {
+      new Notification(title, {
+        body,
+        icon: '/favicon.ico',
+      });
+    } catch {}
+  }
+}
+
+function renderTextWithMentions(text: string, currentUsername: string | null) {
+  const parts = text.split(/(@\w+)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('@')) {
+      const isMe = currentUsername && part.substring(1).toLowerCase() === currentUsername.toLowerCase();
+      return (
+        <span key={i} className={`sfn-mention${isMe ? ' mention-me' : ''}`}>
+          {part}
+        </span>
+      );
+    }
+    return part;
+  });
+}
+
 export default function Terminal() {
   const [logs, setLogs] = useState<LogEntry[]>(() => [
     { id: uid(), text: '╔══════════════════════════════════════════╗', type: 'system', time: '' },
@@ -45,6 +119,9 @@ export default function Terminal() {
     const t = localStorage.getItem('sfn_theme') || 'default';
     setTheme(t);
     document.documentElement.setAttribute('data-theme', t);
+
+    // Request notification permission
+    requestNotificationPermission();
 
     // E2EE requires secure context (HTTPS or localhost)
     if (typeof window !== 'undefined') {
@@ -165,6 +242,8 @@ export default function Terminal() {
         if (!Array.isArray(msgs) || !msgs.length) return;
         const entries: LogEntry[] = [];
         let maxTs = currentLastPoll;
+        let hasIncoming = false;
+        let hasMention = false;
         for (const m of msgs) {
           if (seenIdsRef.current.has(m.id)) continue;
           seenIdsRef.current.add(m.id);
@@ -177,12 +256,30 @@ export default function Terminal() {
             }
             entries.push(entry);
             if (m.timestamp > maxTs) maxTs = m.timestamp;
+
+            if (m.sender !== username) {
+              hasIncoming = true;
+              const isMen = username && plain.toLowerCase().includes(`@${username.toLowerCase()}`);
+              if (isMen) hasMention = true;
+
+              // Display push notification if tab is in the background
+              if (document.hidden) {
+                if (isMen) {
+                  triggerPushNotification(`[!] MENTION in #${activeRoom.name}`, `@${username} was tagged by ${m.sender}: "${plain}"`);
+                } else {
+                  triggerPushNotification(`New message in #${activeRoom.name}`, `${m.sender}: ${plain}`);
+                }
+              }
+            }
           } catch {}
         }
         if (entries.length) {
           setLogs(p => [...p, ...entries]);
           setLastPoll(maxTs);
           setSeenIds(new Set(seenIdsRef.current));
+          if (hasIncoming) {
+            playNotificationSound(hasMention);
+          }
         }
       } catch {}
     };
@@ -797,31 +894,34 @@ export default function Terminal() {
         </header>
 
         <main className="sfn-output" ref={outputRef}>
-          {logs.map(log => (
-            <div key={log.id} className={`ll ${log.type}`}>
-              {log.time && <span className="ll-time">{log.time}</span>}
-              {log.type === 'admin'   && <span className="ll-badge admin">[melodi]</span>}
-              {log.type === 'error'   && <span className="ll-badge error">[fail]</span>}
-              {log.type === 'success' && <span className="ll-badge ok">[ok]</span>}
-              {log.type === 'warn'    && <span className="ll-badge warn">[warn]</span>}
-              <span className="ll-text">
-                {log.text}
-                {log.file && (
-                  <div className="sfn-file-preview">
-                    {log.file.type.startsWith('image/') && log.file.dataUrl ? (
-                      <img src={log.file.dataUrl} alt={log.file.name} className="sfn-img" />
-                    ) : (
-                      <button className="sfn-file-btn" onClick={() => handleFileAction(log.id, log.file!)} disabled={log.file.loading || log.file.error}>
-                        {log.file.loading ? '⏳ Decrypting...' : log.file.error ? '❌ Decrypt Failed' : log.file.dataUrl ? '💾 Download Again' : `📄 ${log.file.name} (${Math.round(log.file.size/1024)}KB)`}
-                      </button>
-                    )}
-                  </div>
-                )}
-                {log.isOwn && log.status === 'sending' && <span className="ll-tick sending"> 🕒</span>}
-                {log.isOwn && log.status === 'sent' && <span className="ll-tick sent"> ✓✓</span>}
-              </span>
-            </div>
-          ))}
+          {logs.map(log => {
+            const isMentioned = username && log.text.toLowerCase().includes(`@${username.toLowerCase()}`);
+            return (
+              <div key={log.id} className={`ll ${log.type}${isMentioned ? ' mention-pulse' : ''}`}>
+                {log.time && <span className="ll-time">{log.time}</span>}
+                {log.type === 'admin'   && <span className="ll-badge admin">[melodi]</span>}
+                {log.type === 'error'   && <span className="ll-badge error">[fail]</span>}
+                {log.type === 'success' && <span className="ll-badge ok">[ok]</span>}
+                {log.type === 'warn'    && <span className="ll-badge warn">[warn]</span>}
+                <span className="ll-text">
+                  {renderTextWithMentions(log.text, username)}
+                  {log.file && (
+                    <div className="sfn-file-preview">
+                      {log.file.type.startsWith('image/') && log.file.dataUrl ? (
+                        <img src={log.file.dataUrl} alt={log.file.name} className="sfn-img" />
+                      ) : (
+                        <button className="sfn-file-btn" onClick={() => handleFileAction(log.id, log.file!)} disabled={log.file.loading || log.file.error}>
+                          {log.file.loading ? '⏳ Decrypting...' : log.file.error ? '❌ Decrypt Failed' : log.file.dataUrl ? '💾 Download Again' : `📄 ${log.file.name} (${Math.round(log.file.size/1024)}KB)`}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  {log.isOwn && log.status === 'sending' && <span className="ll-tick sending"> 🕒</span>}
+                  {log.isOwn && log.status === 'sent' && <span className="ll-tick sent"> ✓✓</span>}
+                </span>
+              </div>
+            );
+          })}
           <div className="ll system"><span className="blink">█</span></div>
         </main>
 

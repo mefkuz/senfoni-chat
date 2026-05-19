@@ -589,3 +589,32 @@ html, body {
   opacity: 0.3;
   cursor: not-allowed;
 }
+
+/* ─── Mentions & Notifications ───────────────────────────────────────────── */
+.sfn-mention {
+  color: var(--primary);
+  text-shadow: 0 0 4px var(--primary-glow);
+  font-weight: 500;
+  padding: 0 2px;
+}
+
+.sfn-mention.mention-me {
+  color: #ff9d00;
+  text-shadow: 0 0 6px rgba(255, 157, 0, 0.6);
+  font-weight: bold;
+  border-radius: 3px;
+  background: rgba(255, 157, 0, 0.1);
+  padding: 0 4px;
+}
+
+.ll.mention-pulse {
+  background: rgba(255, 157, 0, 0.04) !important;
+  border-left: 2px solid #ff9d00 !important;
+  padding-left: 6px;
+  animation: mention-pulse-glow 3s ease-in-out infinite;
+}
+
+@keyframes mention-pulse-glow {
+  0%, 100% { background: rgba(255, 157, 0, 0.04); }
+  50%       { background: rgba(255, 157, 0, 0.09); }
+}
