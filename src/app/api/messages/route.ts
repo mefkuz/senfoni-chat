@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getUserByApiKey, getMessages, saveMessage, isMuted, isKicked, getTypingUsers } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const room = searchParams.get('room');

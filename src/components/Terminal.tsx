@@ -274,7 +274,7 @@ export default function Terminal() {
     const poll = async () => {
       try {
         const currentLastPoll = lastPollRef.current;
-        const r = await fetch(`/api/messages?room=${activeRoom.hash}&since=${currentLastPoll}`);
+        const r = await fetch(`/api/messages?room=${activeRoom.hash}&since=${currentLastPoll}&_t=${Date.now()}`);
         
         // Parse active typing users list from response custom header
         const typingHeader = r.headers.get('X-Typing-Users');
@@ -620,7 +620,7 @@ export default function Terminal() {
 
           add(`E2EE LINK — [#${args[0]}] active.`, 'success');
           // Load history
-          const hr = await fetch(`/api/messages?room=${rHash}`);
+          const hr = await fetch(`/api/messages?room=${rHash}&_t=${Date.now()}`);
 
           // Parse active typing users list from response custom header
           const typingHeader = hr.headers.get('X-Typing-Users');
