@@ -784,12 +784,12 @@ export default function Terminal() {
       case '/create-room': {
         if (role !== 'admin') { add('UNAUTHORIZED', 'error'); break; }
         if (!args[0]) { add('USAGE: /create-room [name]', 'error'); break; }
-        const r = await fetch('/api/admin', { method:'POST', headers:{'Content-Type':'application/json','X-Senfoni-Key':apiKey!}, body: JSON.stringify({ action:'create-room', name:args[0] }) });
+        const genKey = Math.random().toString(36).slice(-6) + Math.random().toString(36).slice(-6);
+        const r = await fetch('/api/admin', { method:'POST', headers:{'Content-Type':'application/json','X-Senfoni-Key':apiKey!}, body: JSON.stringify({ action:'create-room', name:args[0], roomKey: genKey }) });
         const d = await r.json();
         if (d.error) { add(`ERR: ${d.error}`, 'error'); break; }
         add(d.message, 'admin');
         
-        const genKey = Math.random().toString(36).slice(-6) + Math.random().toString(36).slice(-6);
         add(`Room Key: ${genKey}  (Share this with users so they can join!)`, 'success');
         
         const saved = JSON.parse(localStorage.getItem('sfn_keys') || '{}');
@@ -805,12 +805,12 @@ export default function Terminal() {
       case '/create-voice-room': {
         if (role !== 'admin') { add('UNAUTHORIZED', 'error'); break; }
         if (!args[0]) { add('USAGE: /create-voice-room [name]', 'error'); break; }
-        const r = await fetch('/api/admin', { method:'POST', headers:{'Content-Type':'application/json','X-Senfoni-Key':apiKey!}, body: JSON.stringify({ action:'create-room', name:args[0], type:'voice' }) });
+        const genKey = Math.random().toString(36).slice(-6) + Math.random().toString(36).slice(-6);
+        const r = await fetch('/api/admin', { method:'POST', headers:{'Content-Type':'application/json','X-Senfoni-Key':apiKey!}, body: JSON.stringify({ action:'create-room', name:args[0], type:'voice', roomKey: genKey }) });
         const d = await r.json();
         if (d.error) { add(`ERR: ${d.error}`, 'error'); break; }
         add(d.message, 'admin');
         
-        const genKey = Math.random().toString(36).slice(-6) + Math.random().toString(36).slice(-6);
         add(`Voice Room Key: ${genKey}  (Share this with users so they can join!)`, 'success');
         
         const saved = JSON.parse(localStorage.getItem('sfn_keys') || '{}');

@@ -75,6 +75,7 @@ export interface UserRecord {
 }
 export interface RoomRecord {
   name: string; roomHash: string; createdAt: number; createdBy: string; type?: 'text' | 'voice';
+  roomKey?: string;
 }
 export interface MessageRecord {
   id: string; room: string; ciphertext: string; iv: string;
@@ -204,11 +205,11 @@ function readRooms() { return readJson<Record<string, RoomRecord>>(ROOMS_FILE, {
 export function getAllRooms(): RoomRecord[] { return Object.values(readRooms()); }
 export function roomExists(roomHash: string): boolean { return !!readRooms()[roomHash]; }
 
-export function createRoom(name: string, roomHash: string, createdBy: string, type: 'text'|'voice' = 'text'): { error?: string } {
+export function createRoom(name: string, roomHash: string, createdBy: string, type: 'text'|'voice' = 'text', roomKey?: string): { error?: string } {
   validateHash(roomHash);
   const rooms = readRooms();
   if (rooms[roomHash]) return { error: `Room [${name}] already exists.` };
-  rooms[roomHash] = { name, roomHash, createdAt: Date.now(), createdBy, type };
+  rooms[roomHash] = { name, roomHash, createdAt: Date.now(), createdBy, type, roomKey };
   writeJson(ROOMS_FILE, rooms);
   const msgFile = path.join(MESSAGES_DIR, `${roomHash}.json`);
   if (!fs.existsSync(msgFile)) fs.writeFileSync(msgFile, encryptData('[]'), 'utf-8');

@@ -3,7 +3,7 @@
  * Validates an API key and returns user info.
  */
 import { NextResponse } from 'next/server';
-import { getUserByApiKey } from '@/lib/db';
+import { getUserByApiKey, getAllRooms } from '@/lib/db';
 
 const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
 
@@ -23,7 +23,25 @@ export async function POST(request: Request) {
       return NextResponse.json({ valid: false, error: 'INVALID_API_KEY' }, { status: 401 });
     }
 
-    return NextResponse.json({ valid: true, username: user.username, role: user.role });
+    // Auto-populate all keys for admins/moderators
+    const roomKeys = { ...(user.roomKeys || {}) };
+    if (user.role === 'admin') {
+      const rooms = getAllRooms();
+      for (const r of rooms) {
+        if (r.roomKey) {
+          roomKeys[r.name] = r.roomKey;
+        }
+      }
+    }
+
+    return NextResponse.json({
+      valid: true,
+      username: user.username,
+      role: user.role,
+      lastRoom: user.lastRoom,
+      lastRoomKey: user.lastRoomKey,
+      roomKeys
+    });
   } catch {
     return NextResponse.json({ error: 'BAD_REQUEST' }, { status: 400 });
   }

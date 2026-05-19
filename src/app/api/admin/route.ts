@@ -67,7 +67,7 @@ export async function POST(request: Request) {
       case 'create-room': {
         if (!name) return NextResponse.json({ error: 'Room name required.' }, { status: 400 });
         const h = await hashRoomName(name);
-        const r = createRoom(name, h, ADMIN_USERNAME, body.type === 'voice' ? 'voice' : 'text');
+        const r = createRoom(name, h, ADMIN_USERNAME, body.type === 'voice' ? 'voice' : 'text', body.roomKey);
         if (r.error) return NextResponse.json({ error: r.error }, { status: 409 });
         return NextResponse.json({ success: true, message: `${body.type === 'voice' ? 'Voice Room' : 'Room'} [#${name}] created.` });
       }
