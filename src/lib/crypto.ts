@@ -7,10 +7,17 @@ const ITERATIONS = 100000;
 const KEY_LENGTH = 256;
 const ALGO = 'AES-GCM';
 
+function checkSecureContext() {
+  if (typeof window !== 'undefined' && (!window.crypto || !window.crypto.subtle)) {
+    throw new Error('E2EE protocol requires a secure context (HTTPS or localhost). Insecure HTTP access is blocked.');
+  }
+}
+
 /**
  * Derives a cryptographic key from a password and salt.
  */
 export async function deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey> {
+  checkSecureContext();
   const enc = new TextEncoder();
   const keyMaterial = await crypto.subtle.importKey(
     'raw',
@@ -38,6 +45,7 @@ export async function deriveKey(password: string, salt: Uint8Array): Promise<Cry
  * Encrypts a message using a derived key.
  */
 export async function encryptMessage(message: string, key: CryptoKey): Promise<{ ciphertext: string; iv: string; salt: string }> {
+  checkSecureContext();
   const enc = new TextEncoder();
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const salt = crypto.getRandomValues(new Uint8Array(16));
@@ -62,6 +70,7 @@ export async function encryptMessage(message: string, key: CryptoKey): Promise<{
  * Decrypts a message using a derived key.
  */
 export async function decryptMessage(ciphertext: string, iv: string, key: CryptoKey): Promise<string> {
+  checkSecureContext();
   const dec = new TextDecoder();
   const decrypted = await crypto.subtle.decrypt(
     { name: ALGO, iv: b64Decode(iv) },
@@ -77,6 +86,7 @@ export async function decryptMessage(ciphertext: string, iv: string, key: Crypto
  * Returns base64-encoded ciphertext and IV.
  */
 export async function encryptFile(data: ArrayBuffer, key: CryptoKey): Promise<{ ciphertext: string; iv: string }> {
+  checkSecureContext();
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const encrypted = await crypto.subtle.encrypt(
     { name: ALGO, iv },
@@ -94,6 +104,7 @@ export async function encryptFile(data: ArrayBuffer, key: CryptoKey): Promise<{ 
  * Returns the original ArrayBuffer.
  */
 export async function decryptFile(ciphertext: string, iv: string, key: CryptoKey): Promise<ArrayBuffer> {
+  checkSecureContext();
   const decrypted = await crypto.subtle.decrypt(
     { name: ALGO, iv: b64Decode(iv) },
     key,

@@ -38,12 +38,34 @@ export default function Terminal() {
   const [history, setHistory]       = useState<string[]>([]);
   const [historyIdx, setHistoryIdx] = useState(-1);
   const [theme, setTheme]           = useState<string>('default');
+  const [isSecure, setIsSecure]     = useState(true);
 
-  // Load theme
+  // Load theme & check secure context
   useEffect(() => {
     const t = localStorage.getItem('sfn_theme') || 'default';
     setTheme(t);
     document.documentElement.setAttribute('data-theme', t);
+
+    // E2EE requires secure context (HTTPS or localhost)
+    if (typeof window !== 'undefined') {
+      const secure = !!(window.isSecureContext && window.crypto && window.crypto.subtle);
+      setIsSecure(secure);
+      if (!secure) {
+        setLogs(prev => [
+          ...prev,
+          { id: uid(), text: ' ', type: 'warn', time: '' },
+          { id: uid(), text: '╔══════════════════════════════════════════════════════════════════╗', type: 'warn', time: '' },
+          { id: uid(), text: '║  [SECURITY WARNING] INSECURE ORIGIN DETECTED                      ║', type: 'warn', time: '' },
+          { id: uid(), text: '║  E2EE (End-to-End Encryption) requires a Secure Context (HTTPS)  ║', type: 'warn', time: '' },
+          { id: uid(), text: '║  or access via localhost (http://localhost:3000).                ║', type: 'warn', time: '' },
+          { id: uid(), text: '║  Cryptographic protocols (WebCrypto) are blocked by the browser  ║', type: 'warn', time: '' },
+          { id: uid(), text: `║  Origin: ${window.location.origin.padEnd(55)} ║`, type: 'warn', time: '' },
+          { id: uid(), text: '║  Messaging and Voice features will be non-functional here.       ║', type: 'warn', time: '' },
+          { id: uid(), text: '╚══════════════════════════════════════════════════════════════════╝', type: 'warn', time: '' },
+          { id: uid(), text: ' ', type: 'warn', time: '' },
+        ]);
+      }
+    }
   }, []);
 
   // Load command history
@@ -57,6 +79,17 @@ export default function Terminal() {
   const outputRef = useRef<HTMLDivElement>(null);
   const inputRef  = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const lastPollRef = useRef(0);
+  const seenIdsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    lastPollRef.current = lastPoll;
+  }, [lastPoll]);
+
+  useEffect(() => {
+    seenIdsRef.current = seenIds;
+  }, [seenIds]);
 
   const add = useCallback((text: string, type: LogEntry['type'] = 'system') => {
     setLogs(p => [...p, { id: uid(), text, type, time: ts() }]);
@@ -124,14 +157,15 @@ export default function Terminal() {
     if (!activeRoom || !apiKey) return;
     const poll = async () => {
       try {
-        const r = await fetch(`/api/messages?room=${activeRoom.hash}&since=${lastPoll}`);
+        const currentLastPoll = lastPollRef.current;
+        const r = await fetch(`/api/messages?room=${activeRoom.hash}&since=${currentLastPoll}`);
         const msgs: any[] = await r.json();
         if (!Array.isArray(msgs) || !msgs.length) return;
         const entries: LogEntry[] = [];
-        let maxTs = lastPoll;
+        let maxTs = currentLastPoll;
         for (const m of msgs) {
-          if (seenIds.has(m.id)) continue;
-          seenIds.add(m.id);
+          if (seenIdsRef.current.has(m.id)) continue;
+          seenIdsRef.current.add(m.id);
           try {
             const plain = await decryptMessage(m.ciphertext, m.iv, activeRoom.cryptoKey);
             const entry: LogEntry = { id: uid(), text: `${m.sender}: ${plain}`, type: 'msg', time: new Date(m.timestamp).toLocaleTimeString('en-US', { hour12: false, hour:'2-digit', minute:'2-digit', second:'2-digit' }), isOwn: m.sender === username, status: 'sent' };
@@ -143,13 +177,17 @@ export default function Terminal() {
             if (m.timestamp > maxTs) maxTs = m.timestamp;
           } catch {}
         }
-        if (entries.length) { setLogs(p => [...p, ...entries]); setLastPoll(maxTs); }
+        if (entries.length) {
+          setLogs(p => [...p, ...entries]);
+          setLastPoll(maxTs);
+          setSeenIds(new Set(seenIdsRef.current));
+        }
       } catch {}
     };
     const t = setInterval(poll, POLLING_INTERVAL_MS);
     return () => clearInterval(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeRoom, apiKey, lastPoll]);
+  }, [activeRoom, apiKey, username]);
 
   function doQuit(reason = 'Session terminated.') {
     leaveVoice();
@@ -181,7 +219,14 @@ export default function Terminal() {
         return;
       }
       // Immediately mark as seen to avoid duplicate on next poll
-      if (d.id) seenIds.add(d.id);
+      if (d.id) {
+        seenIdsRef.current.add(d.id);
+        setSeenIds(new Set(seenIdsRef.current));
+      }
+      if (d.timestamp) {
+        lastPollRef.current = d.timestamp;
+        setLastPoll(d.timestamp);
+      }
       setLogs(p => p.map(l => l.id === msgId ? { ...l, status: 'sent' } : l));
     } catch {
       setLogs(p => p.map(l => l.id === msgId ? { ...l, status: undefined, type: 'error', text: 'ERR: SEND_FAILED' } : l));
@@ -223,7 +268,14 @@ export default function Terminal() {
       if (d.error) {
         setLogs(p => p.map(l => l.id === msgId ? { ...l, status: undefined, type: 'error', text: `ERR: ${d.error}` } : l));
       } else {
-        if (d.messageId) seenIds.add(d.messageId);
+        if (d.messageId) {
+          seenIdsRef.current.add(d.messageId);
+          setSeenIds(new Set(seenIdsRef.current));
+        }
+        if (d.timestamp) {
+          lastPollRef.current = d.timestamp;
+          setLastPoll(d.timestamp);
+        }
         setLogs(p => p.map(l => l.id === msgId ? { 
           ...l, 
           status: 'sent', 
@@ -647,7 +699,7 @@ export default function Terminal() {
                   onClick={e => { 
                     e.stopPropagation(); 
                     const saved = JSON.parse(sessionStorage.getItem('sfn_keys') || '{}');
-                    const key = saved[r.name] || (role === 'admin' ? `admin-secret-${r.name}` : null);
+                    const key = saved[r.name];
                     if (key) {
                       exec('/join', [r.name, key]);
                     } else {
@@ -676,7 +728,7 @@ export default function Terminal() {
                         exec('/leave-voice', []);
                       } else {
                         const saved = JSON.parse(sessionStorage.getItem('sfn_keys') || '{}');
-                        const key = saved[r.name] || (role === 'admin' ? `admin-secret-${r.name}` : null);
+                        const key = saved[r.name];
                         if (key) {
                           exec('/join-voice', [r.name, key]);
                         } else {
