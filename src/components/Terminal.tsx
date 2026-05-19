@@ -50,16 +50,17 @@ export default function Terminal() {
     if (typeof window !== 'undefined') {
       const secure = !!(window.isSecureContext && window.crypto && window.crypto.subtle);
       setIsSecure(secure);
-      if (!secure) {
+      if (!secure && !warnedRef.current) {
+        warnedRef.current = true;
         setLogs(prev => [
           ...prev,
           { id: uid(), text: ' ', type: 'warn', time: '' },
           { id: uid(), text: '╔══════════════════════════════════════════════════════════════════╗', type: 'warn', time: '' },
-          { id: uid(), text: '║  [SECURITY WARNING] INSECURE ORIGIN DETECTED                      ║', type: 'warn', time: '' },
+          { id: uid(), text: '║  [SECURITY WARNING] INSECURE ORIGIN DETECTED                     ║', type: 'warn', time: '' },
           { id: uid(), text: '║  E2EE (End-to-End Encryption) requires a Secure Context (HTTPS)  ║', type: 'warn', time: '' },
           { id: uid(), text: '║  or access via localhost (http://localhost:3000).                ║', type: 'warn', time: '' },
           { id: uid(), text: '║  Cryptographic protocols (WebCrypto) are blocked by the browser  ║', type: 'warn', time: '' },
-          { id: uid(), text: `║  Origin: ${window.location.origin.padEnd(55)} ║`, type: 'warn', time: '' },
+          { id: uid(), text: `║ ${("  Origin: " + window.location.origin).padEnd(64)} ║`, type: 'warn', time: '' },
           { id: uid(), text: '║  Messaging and Voice features will be non-functional here.       ║', type: 'warn', time: '' },
           { id: uid(), text: '╚══════════════════════════════════════════════════════════════════╝', type: 'warn', time: '' },
           { id: uid(), text: ' ', type: 'warn', time: '' },
@@ -82,6 +83,7 @@ export default function Terminal() {
 
   const lastPollRef = useRef(0);
   const seenIdsRef = useRef<Set<string>>(new Set());
+  const warnedRef = useRef(false);
 
   useEffect(() => {
     lastPollRef.current = lastPoll;
