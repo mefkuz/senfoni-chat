@@ -113,6 +113,43 @@ export default function Terminal() {
   const [historyIdx, setHistoryIdx] = useState(-1);
   const [theme, setTheme]           = useState<string>('default');
   const [isSecure, setIsSecure]     = useState(true);
+  const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  const lastTypingSentRef             = useRef<number>(0);
+  const [lastSeenCounts, setLastSeenCounts] = useState<Record<string, number>>(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        return JSON.parse(localStorage.getItem('sfn_last_seen_counts') || '{}');
+      }
+    } catch {}
+    return {};
+  });
+
+  const handleInputChange = (val: string) => {
+    setInput(val);
+    setHistoryIdx(-1);
+
+    if (!activeRoom || !username || !apiKey) return;
+
+    const now = Date.now();
+    const isEmpty = val.trim().length === 0;
+
+    // Send typing heartbeat
+    if (isEmpty || now - lastTypingSentRef.current > 2000) {
+      lastTypingSentRef.current = now;
+      fetch('/api/messages/typing', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Caller-Key': apiKey
+        },
+        body: JSON.stringify({
+          room: activeRoom.hash,
+          username,
+          isTyping: !isEmpty
+        })
+      }).catch(() => {});
+    }
+  };
 
   // Load theme & check secure context
   useEffect(() => {
@@ -238,6 +275,14 @@ export default function Terminal() {
       try {
         const currentLastPoll = lastPollRef.current;
         const r = await fetch(`/api/messages?room=${activeRoom.hash}&since=${currentLastPoll}`);
+        
+        // Parse active typing users list from response custom header
+        const typingHeader = r.headers.get('X-Typing-Users');
+        if (typingHeader !== null) {
+          const list = typingHeader ? typingHeader.split(',').filter(Boolean) : [];
+          setTypingUsers(list);
+        }
+
         const msgs: any[] = await r.json();
         if (!Array.isArray(msgs) || !msgs.length) return;
         const entries: LogEntry[] = [];
@@ -435,6 +480,20 @@ export default function Terminal() {
     setHistoryIdx(-1);
 
     setInput('');
+    if (activeRoom && username && apiKey) {
+      fetch('/api/messages/typing', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Caller-Key': apiKey
+        },
+        body: JSON.stringify({
+          room: activeRoom.hash,
+          username,
+          isTyping: false
+        })
+      }).catch(() => {});
+    }
     if (!raw.startsWith('/')) {
       if (activeRoom && apiKey && username) await sendMsg(raw);
       else add('ERR: Join a room first. /join [room] [key]', 'error');
@@ -500,6 +559,19 @@ export default function Terminal() {
           const d = await r.json();
           if (!d.valid) { add('ERR: INVALID_API_KEY', 'error'); break; }
           setUsername(d.username); setApiKey(args[0]); setRole(d.role); setLoginTime(Date.now());
+          localStorage.setItem('sfn_api_key', args[0]);
+
+          // Restore server-saved room keys and last room
+          if (d.roomKeys) {
+            const saved = JSON.parse(localStorage.getItem('sfn_keys') || '{}');
+            const merged = { ...saved, ...d.roomKeys };
+            localStorage.setItem('sfn_keys', JSON.stringify(merged));
+          }
+          if (d.lastRoom && d.lastRoomKey) {
+            localStorage.setItem('sfn_last_room', d.lastRoom);
+            localStorage.setItem('sfn_last_room_key', d.lastRoomKey);
+          }
+
           if (d.role === 'admin') {
             add(`ACCESS GRANTED — [${d.username}] MODERATOR`, 'admin');
             // Admin auto-joins: load all rooms into sidebar immediately
@@ -526,17 +598,40 @@ export default function Terminal() {
           
           // Save key for auto-join next time
           if (!args[0].startsWith('notes-')) {
-            const saved = JSON.parse(sessionStorage.getItem('sfn_keys') || '{}');
+            const saved = JSON.parse(localStorage.getItem('sfn_keys') || '{}');
             saved[args[0]] = args[1];
-            sessionStorage.setItem('sfn_keys', JSON.stringify(saved));
+            localStorage.setItem('sfn_keys', JSON.stringify(saved));
+            
+            // Save last room info
+            localStorage.setItem('sfn_last_room', args[0]);
+            localStorage.setItem('sfn_last_room_key', args[1]);
+          } else {
+            // Personal notes room
+            localStorage.setItem('sfn_last_room', args[0]);
+            localStorage.setItem('sfn_last_room_key', args[1]);
           }
+
+          // Persist join status on the server
+          fetch('/api/rooms', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Caller-Key': apiKey || localStorage.getItem('sfn_api_key') || '' },
+            body: JSON.stringify({ action: 'join', roomName: args[0], roomKey: args[1] })
+          }).catch(() => {});
 
           add(`E2EE LINK — [#${args[0]}] active.`, 'success');
           // Load history
           const hr = await fetch(`/api/messages?room=${rHash}`);
+
+          // Parse active typing users list from response custom header
+          const typingHeader = hr.headers.get('X-Typing-Users');
+          if (typingHeader !== null) {
+            const list = typingHeader ? typingHeader.split(',').filter(Boolean) : [];
+            setTypingUsers(list);
+          }
+
           const hist: any[] = await hr.json();
+          const entries: LogEntry[] = [];
           if (Array.isArray(hist) && hist.length) {
-            const entries: LogEntry[] = [];
             const ids = new Set<string>();
             let maxTs = 0;
             for (const m of hist) {
@@ -556,6 +651,10 @@ export default function Terminal() {
             add(`── ${entries.length} message(s) loaded ──`);
             setLogs(p => [...p, ...entries]);
           }
+          setLastSeenCounts(prev => ({
+            ...prev,
+            [rHash]: entries.length
+          }));
         } catch { add('ERR: Failed to join.', 'error'); }
         break;
 
@@ -563,6 +662,15 @@ export default function Terminal() {
         if (!activeRoom) { add('Not in a text room.', 'error'); break; }
         add(`Left [#${activeRoom.name}].`);
         setActiveRoom(null); setLastPoll(0); setSeenIds(new Set());
+        localStorage.removeItem('sfn_last_room');
+        localStorage.removeItem('sfn_last_room_key');
+
+        // Persist leave status on the server
+        fetch('/api/rooms', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Caller-Key': apiKey || localStorage.getItem('sfn_api_key') || '' },
+          body: JSON.stringify({ action: 'leave' })
+        }).catch(() => {});
         break;
 
       case '/join-voice':
@@ -573,9 +681,9 @@ export default function Terminal() {
           const rHash = await hashStr('senfoni-room-' + args[0]);
           setActiveVoiceRoom({ name: args[0], hash: rHash });
           
-          const saved = JSON.parse(sessionStorage.getItem('sfn_keys') || '{}');
+          const saved = JSON.parse(localStorage.getItem('sfn_keys') || '{}');
           saved[args[0]] = args[1];
-          sessionStorage.setItem('sfn_keys', JSON.stringify(saved));
+          localStorage.setItem('sfn_keys', JSON.stringify(saved));
           
           joinVoice(rHash);
         } catch { add('ERR: Failed to join voice.', 'error'); }
@@ -684,9 +792,9 @@ export default function Terminal() {
         const genKey = Math.random().toString(36).slice(-6) + Math.random().toString(36).slice(-6);
         add(`Room Key: ${genKey}  (Share this with users so they can join!)`, 'success');
         
-        const saved = JSON.parse(sessionStorage.getItem('sfn_keys') || '{}');
+        const saved = JSON.parse(localStorage.getItem('sfn_keys') || '{}');
         saved[args[0]] = genKey;
-        sessionStorage.setItem('sfn_keys', JSON.stringify(saved));
+        localStorage.setItem('sfn_keys', JSON.stringify(saved));
 
         // Refresh sidebar
         const rr = await fetch('/api/rooms', { headers: { 'X-Caller-Key': apiKey! } });
@@ -705,9 +813,9 @@ export default function Terminal() {
         const genKey = Math.random().toString(36).slice(-6) + Math.random().toString(36).slice(-6);
         add(`Voice Room Key: ${genKey}  (Share this with users so they can join!)`, 'success');
         
-        const saved = JSON.parse(sessionStorage.getItem('sfn_keys') || '{}');
+        const saved = JSON.parse(localStorage.getItem('sfn_keys') || '{}');
         saved[args[0]] = genKey;
-        sessionStorage.setItem('sfn_keys', JSON.stringify(saved));
+        localStorage.setItem('sfn_keys', JSON.stringify(saved));
 
         // Refresh sidebar
         const rr = await fetch('/api/rooms', { headers: { 'X-Caller-Key': apiKey! } });
@@ -775,6 +883,51 @@ export default function Terminal() {
     }
   };
 
+  // Keep active room unread count cleared
+  useEffect(() => {
+    if (activeRoom && rooms.length) {
+      const currentRoom = rooms.find(r => r.roomHash === activeRoom.hash);
+      if (currentRoom && currentRoom.messageCount !== undefined) {
+        if (lastSeenCounts[activeRoom.hash] !== currentRoom.messageCount) {
+          setLastSeenCounts(prev => ({
+            ...prev,
+            [activeRoom.hash]: currentRoom.messageCount
+          }));
+        }
+      }
+    }
+  }, [activeRoom, rooms, lastSeenCounts]);
+
+  // Save lastSeenCounts to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('sfn_last_seen_counts', JSON.stringify(lastSeenCounts));
+    }
+  }, [lastSeenCounts]);
+
+  // Auto-login on load
+  useEffect(() => {
+    const savedApiKey = localStorage.getItem('sfn_api_key');
+    if (savedApiKey && !username) {
+      add('Recovering secure session...');
+      exec('/login', [savedApiKey]);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Auto-join last active room after login is established
+  useEffect(() => {
+    if (username && apiKey) {
+      const lastRoom = localStorage.getItem('sfn_last_room');
+      const lastRoomKey = localStorage.getItem('sfn_last_room_key');
+      if (lastRoom && lastRoomKey && !activeRoom) {
+        add(`Reconnecting to last active room [#${lastRoom}]...`);
+        exec('/join', [lastRoom, lastRoomKey]);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [username, apiKey]);
+
   return (
     <div className="sfn-container" onClick={() => inputRef.current?.focus()}>
       <div className="scanline" aria-hidden="true" />
@@ -793,24 +946,31 @@ export default function Terminal() {
             <div className="sb-label">CHANNELS</div>
             {rooms.filter(r => r.type !== 'voice').length === 0
               ? <div className="sb-empty">no text channels</div>
-              : rooms.filter(r => r.type !== 'voice').map(r => (
-                <div key={r.roomHash} className={`sb-room${activeRoom?.name === r.name ? ' active' : ''}`}
-                  onClick={e => { 
-                    e.stopPropagation(); 
-                    const saved = JSON.parse(sessionStorage.getItem('sfn_keys') || '{}');
-                    const key = saved[r.name];
-                    if (key) {
-                      exec('/join', [r.name, key]);
-                    } else {
-                      setInput(`/join ${r.name} `); 
-                      inputRef.current?.focus(); 
-                    }
-                  }}>
-                  <span className="sb-hash">#</span>
-                  <span className="sb-rname">{r.name}</span>
-                  {activeRoom?.name === r.name && <span className="sb-dot" />}
-                </div>
-              ))
+              : rooms.filter(r => r.type !== 'voice').map(r => {
+                const unread = (activeRoom && activeRoom.hash === r.roomHash)
+                  ? 0
+                  : Math.max(0, (r.messageCount || 0) - (lastSeenCounts[r.roomHash] || 0));
+
+                return (
+                  <div key={r.roomHash} className={`sb-room${activeRoom?.name === r.name ? ' active' : ''}${unread > 0 ? ' unread' : ''}`}
+                    onClick={e => { 
+                      e.stopPropagation(); 
+                      const saved = JSON.parse(localStorage.getItem('sfn_keys') || '{}');
+                      const key = saved[r.name];
+                      if (key) {
+                        exec('/join', [r.name, key]);
+                      } else {
+                        setInput(`/join ${r.name} `); 
+                        inputRef.current?.focus(); 
+                      }
+                    }}>
+                    <span className="sb-hash">#</span>
+                    <span className="sb-rname">{r.name}</span>
+                    {unread > 0 && <span className="sb-unread-badge">{unread}</span>}
+                    {activeRoom?.name === r.name && <span className="sb-dot" />}
+                  </div>
+                );
+              })
             }
           </div>
 
@@ -826,7 +986,7 @@ export default function Terminal() {
                       if (activeVoiceRoom?.name === r.name) {
                         exec('/leave-voice', []);
                       } else {
-                        const saved = JSON.parse(sessionStorage.getItem('sfn_keys') || '{}');
+                        const saved = JSON.parse(localStorage.getItem('sfn_keys') || '{}');
                         const key = saved[r.name];
                         if (key) {
                           exec('/join-voice', [r.name, key]);
@@ -925,11 +1085,30 @@ export default function Terminal() {
           <div className="ll system"><span className="blink">█</span></div>
         </main>
 
+        {/* typingUsers indicator */}
+        {typingUsers.filter(u => u !== username).length > 0 && (
+          <div className="sfn-typing-indicator">
+            <div style={{ display: 'flex', gap: '3px', alignItems: 'center' }}>
+              <span className="sfn-typing-dot" />
+              <span className="sfn-typing-dot" />
+              <span className="sfn-typing-dot" />
+            </div>
+            <span>
+              {(() => {
+                const others = typingUsers.filter(u => u !== username);
+                if (others.length === 1) return `${others[0]} yazıyor...`;
+                if (others.length === 2) return `${others[0]} ve ${others[1]} yazıyor...`;
+                return 'Birkaç kişi yazıyor...';
+              })()}
+            </span>
+          </div>
+        )}
+
         <footer className="sfn-footer">
           <form onSubmit={handleSubmit} className="sfn-form">
             <span className="sfn-prompt">{username||'guest'}:{activeRoom?`#${activeRoom.name}`:'~'}$</span>
             <input ref={inputRef} type="text" className="sfn-input" value={input}
-              onChange={e => { setInput(e.target.value); setHistoryIdx(-1); }} 
+              onChange={e => handleInputChange(e.target.value)} 
               onKeyDown={e => {
                 if (e.key === 'ArrowUp') {
                   e.preventDefault();

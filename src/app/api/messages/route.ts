@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getUserByApiKey, getMessages, saveMessage, isMuted, isKicked } from '@/lib/db';
+import { getUserByApiKey, getMessages, saveMessage, isMuted, isKicked, getTypingUsers } from '@/lib/db';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -8,7 +8,15 @@ export async function GET(request: Request) {
   if (!room) return NextResponse.json({ error: 'ROOM_REQUIRED' }, { status: 400 });
   const messages = getMessages(room);
   const filtered = since ? messages.filter(m => m.timestamp > Number(since)) : messages;
-  return NextResponse.json(filtered);
+  
+  const typingUsers = getTypingUsers(room);
+  
+  return NextResponse.json(filtered, {
+    headers: {
+      'X-Typing-Users': typingUsers.join(','),
+      'Access-Control-Expose-Headers': 'X-Typing-Users' // Ensure the header is accessible in remote clients/browsers
+    }
+  });
 }
 
 export async function POST(request: Request) {

@@ -69,6 +69,9 @@ function validateHash(hash: string) {
 export interface UserRecord {
   username: string; apiKey: string; role: 'admin' | 'user';
   createdAt: number; createdBy: string;
+  lastRoom?: string;
+  lastRoomKey?: string;
+  roomKeys?: Record<string, string>;
 }
 export interface RoomRecord {
   name: string; roomHash: string; createdAt: number; createdBy: string; type?: 'text' | 'voice';
@@ -172,6 +175,26 @@ export function regenerateApiKey(username: string): { apiKey: string } | { error
   users[username].apiKey = apiKey;
   writeJson(USERS_FILE, users);
   return { apiKey };
+}
+
+export function updateUserRoomInfo(username: string, lastRoom: string, lastRoomKey: string): void {
+  const users = readUsers();
+  if (!users[username]) return;
+  users[username].lastRoom = lastRoom;
+  users[username].lastRoomKey = lastRoomKey;
+  if (!users[username].roomKeys) {
+    users[username].roomKeys = {};
+  }
+  users[username].roomKeys[lastRoom] = lastRoomKey;
+  writeJson(USERS_FILE, users);
+}
+
+export function leaveUserRoom(username: string): void {
+  const users = readUsers();
+  if (!users[username]) return;
+  delete users[username].lastRoom;
+  delete users[username].lastRoomKey;
+  writeJson(USERS_FILE, users);
 }
 
 // ─── Rooms ────────────────────────────────────────────────────────────────────
@@ -372,6 +395,48 @@ export function getVoicePresence(roomHash: string): string[] {
   const now = Date.now();
   for (const [user, ts] of Object.entries(room)) {
     if (now - ts < 6000) active.push(user); // 6 seconds threshold
+  }
+  return active;
+}
+
+// ─── Typing Indicators ────────────────────────────────────────────────────────
+const TYPING_FILE = path.join(DATA_DIR, 'typing.json');
+
+export interface TypingPresence {
+  [roomHash: string]: { [username: string]: number };
+}
+
+export function updateTypingStatus(roomHash: string, username: string, isTyping: boolean): void {
+  validateHash(roomHash);
+  ensureDataDir();
+  
+  if (!fs.existsSync(TYPING_FILE)) {
+    fs.writeFileSync(TYPING_FILE, encryptData('{}'), 'utf-8');
+  }
+  
+  const p = readJson<TypingPresence>(TYPING_FILE, {});
+  if (!p[roomHash]) p[roomHash] = {};
+  
+  if (isTyping) {
+    p[roomHash][username] = Date.now();
+  } else {
+    delete p[roomHash][username];
+  }
+  
+  writeJson(TYPING_FILE, p);
+}
+
+export function getTypingUsers(roomHash: string): string[] {
+  try { validateHash(roomHash); } catch { return []; }
+  if (!fs.existsSync(TYPING_FILE)) return [];
+  const p = readJson<TypingPresence>(TYPING_FILE, {});
+  const room = p[roomHash] || {};
+  const active: string[] = [];
+  const now = Date.now();
+  for (const [user, ts] of Object.entries(room)) {
+    if (now - ts < 5000) { // 5 seconds typing heartbeat threshold
+      active.push(user);
+    }
   }
   return active;
 }
