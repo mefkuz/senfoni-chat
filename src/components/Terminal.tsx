@@ -1088,19 +1088,23 @@ export default function Terminal() {
         {/* typingUsers indicator */}
         {typingUsers.filter(u => u !== username).length > 0 && (
           <div className="sfn-typing-indicator">
-            <div style={{ display: 'flex', gap: '3px', alignItems: 'center' }}>
+            <span className="sfn-typing-prompt">❯</span>
+            <span className="sfn-typing-text">
+              {(() => {
+                const others = typingUsers.filter(u => u !== username);
+                if (others.length === 1) return others[0];
+                if (others.length === 2) return `${others[0]} ve ${others[1]}`;
+                return 'Birkaç kişi';
+              })()}
+            </span>
+            <span className="sfn-typing-suffix">
+              {typingUsers.filter(u => u !== username).length > 2 ? ' yazıyorlar' : ' yazıyor'}
+            </span>
+            <div className="sfn-typing-dots">
               <span className="sfn-typing-dot" />
               <span className="sfn-typing-dot" />
               <span className="sfn-typing-dot" />
             </div>
-            <span>
-              {(() => {
-                const others = typingUsers.filter(u => u !== username);
-                if (others.length === 1) return `${others[0]} yazıyor...`;
-                if (others.length === 2) return `${others[0]} ve ${others[1]} yazıyor...`;
-                return 'Birkaç kişi yazıyor...';
-              })()}
-            </span>
           </div>
         )}
 
