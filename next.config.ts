@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   allowedDevOrigins: [
+    'senfoni.mefkuz.com',
+    '*.mefkuz.com',
     '*.ngrok-free.dev',
     '*.ngrok-free.app',
     '*.trycloudflare.com',
@@ -17,6 +19,8 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: '50mb',
       allowedOrigins: [
+        'senfoni.mefkuz.com',
+        '*.mefkuz.com',
         '*.ngrok-free.dev',
         '*.ngrok-free.app',
         '*.trycloudflare.com',
