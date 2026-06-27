@@ -100,7 +100,14 @@ export function useVoiceChat(
   const handleSignal = useCallback(async (signal: any) => {
     if (signal.sender === username) return;
 
-    if (signal.type === 'offer') {
+    if (signal.type === 'announce') {
+      const pc = createPeerConnection(signal.sender);
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      sendSignal('offer', JSON.stringify(offer), signal.sender);
+    }
+
+    if (signal.type === 'offer' && signal.target === username) {
       const pc = createPeerConnection(signal.sender);
       await pc.setRemoteDescription(JSON.parse(signal.data));
       const answer = await pc.createAnswer();
@@ -140,9 +147,6 @@ export function useVoiceChat(
       setState({ isActive: true, isMuted: false, peers: [], error: null });
       addLog('VOICE: Microphone active. Connecting...', 'success');
 
-      // Announce presence by sending an offer broadcast
-      sendSignal('offer', JSON.stringify({ type: 'announce', username }));
-
       // Start polling for signaling messages
       const poll = async () => {
         if (!activeRef.current) return;
@@ -162,11 +166,11 @@ export function useVoiceChat(
         } catch {}
       };
 
-      // Create offer for all peers
-      sendSignal('offer', JSON.stringify(await createInitialOffer(stream)), undefined);
-
       pollRef.current = setInterval(poll, SIGNAL_POLL_MS);
       poll();
+
+      // Announce presence by sending an announce broadcast
+      sendSignal('announce', '{}');
 
     } catch (err: any) {
       const msg = err?.message?.includes('Permission') ? 'Microphone permission denied.' : 'Failed to access microphone.';
@@ -196,10 +200,3 @@ export function useVoiceChat(
   return { voiceState: state, joinVoice, leaveVoice, toggleMute };
 }
 
-async function createInitialOffer(stream: MediaStream): Promise<RTCSessionDescriptionInit> {
-  const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
-  stream.getTracks().forEach(t => pc.addTrack(t, stream));
-  const offer = await pc.createOffer();
-  pc.close();
-  return offer;
-}

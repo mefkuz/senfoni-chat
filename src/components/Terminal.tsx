@@ -924,7 +924,20 @@ export default function Terminal() {
 
   // Auto-login on load
   useEffect(() => {
-    const savedApiKey = localStorage.getItem('sfn_api_key');
+    let savedApiKey = localStorage.getItem('sfn_api_key');
+    
+    // Check URL parameters for auto-login
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const urlKey = params.get('key');
+      if (urlKey) {
+        savedApiKey = urlKey;
+        localStorage.setItem('sfn_api_key', urlKey);
+        // Clear the URL parameter so it doesn't stay in the address bar
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+
     if (savedApiKey && !username) {
         exec('/login', [savedApiKey]);
     }
