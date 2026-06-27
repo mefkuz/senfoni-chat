@@ -1,16 +1,33 @@
-/**
- * useVoiceChat — WebRTC voice chat hook using HTTP polling for signaling
- */
 'use client';
 
 import { useRef, useState, useCallback, useEffect } from 'react';
 
+// Generate time-limited TURN credentials (RFC 5766 HMAC-SHA1)
+function getTurnCredentials() {
+  const secret = 'sfn_turn_s3cr3t_2024';
+  const ttl = 86400; // 24h
+  const unixTime = Math.floor(Date.now() / 1000) + ttl;
+  const username = `${unixTime}:senfoni`;
+  // Browser can't run crypto in this context, use static for now
+  // In production: generate server-side via /api/turn-creds
+  return { username, credential: secret };
+}
+
+const { username: TURN_USER, credential: TURN_CRED } = getTurnCredentials();
+
 const ICE_SERVERS = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
-  // NOTE: For absolute anonymity and to prevent Public IP leakage via WebRTC P2P,
-  // a production TURN server (e.g. coturn) must be configured here:
-  // { urls: 'turn:turn.example.com:3478', username: '...', credential: '...' }
+  { urls: 'stun:212.87.221.55:3478' },
+  {
+    urls: [
+      'turn:212.87.221.55:3478?transport=udp',
+      'turn:212.87.221.55:3478?transport=tcp',
+      'turns:212.87.221.55:5349',
+    ],
+    username: TURN_USER,
+    credential: TURN_CRED,
+  },
 ];
 const SIGNAL_POLL_MS = 1000;
 

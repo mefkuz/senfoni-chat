@@ -52,6 +52,10 @@ export async function POST(request: Request) {
       case 'delete-user': {
         if (!name) return NextResponse.json({ error: 'Username required.' }, { status: 400 });
         if (!deleteUser(name)) return NextResponse.json({ error: `User [${name}] not found or protected.` }, { status: 404 });
+        // Notify Karma to remove the member (fire-and-forget, internal Docker network)
+        fetch(`http://senfoni-karma-test:80/api/members/by-username/${encodeURIComponent(name)}`, {
+          method: 'DELETE',
+        }).catch(() => {}); // ignore if Karma is unreachable
         return NextResponse.json({ success: true, message: `User [${name}] deleted.` });
       }
       case 'gen-api': {
