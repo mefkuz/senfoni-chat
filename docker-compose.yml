@@ -13,7 +13,13 @@ services:
       - NODE_ENV=production
     volumes:
       - senfoni-data:/app/data
+    networks:
+      - sunucu-servisleri_senfoni_net
 
 volumes:
   senfoni-data:
     name: senfoni-chat-data
+
+networks:
+  sunucu-servisleri_senfoni_net:
+    external: true

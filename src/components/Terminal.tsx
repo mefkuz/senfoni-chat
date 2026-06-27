@@ -6,7 +6,7 @@ import { POLLING_INTERVAL_MS, SESSION_TIMEOUT_MS, APP_VERSION, MAX_FILE_SIZE_BYT
 import { useVoiceChat } from '@/hooks/useVoiceChat';
 
 interface LogEntry { id: string; text: string; type: 'system'|'user'|'admin'|'error'|'msg'|'success'|'warn'; time: string; isOwn?: boolean; status?: 'sending'|'sent'; file?: { id: string, name: string, type: string, size: number, dataUrl?: string, loading?: boolean, error?: boolean }; }
-interface RoomInfo { name: string; roomHash: string; type?: 'text'|'voice'; activeUsers?: string[]; }
+interface RoomInfo { name: string; roomHash: string; type?: 'text'|'voice'; activeUsers?: string[]; messageCount?: number; }
 interface ActiveRoom { name: string; hash: string; cryptoKey: CryptoKey; }
 
 let _c = 0;
@@ -89,13 +89,13 @@ function renderTextWithMentions(text: string, currentUsername: string | null) {
 
 export default function Terminal() {
   const [logs, setLogs] = useState<LogEntry[]>(() => [
-    { id: uid(), text: '╔══════════════════════════════════════════╗', type: 'system', time: '' },
-    { id: uid(), text: '║     SENFONI CHAT  ·  Secure Protocol      ║', type: 'system', time: '' },
-    { id: uid(), text: `║     Version ${APP_VERSION}  ·  E2EE Enabled        ║`, type: 'system', time: '' },
-    { id: uid(), text: '╚══════════════════════════════════════════╝', type: 'system', time: '' },
-    { id: uid(), text: 'System: PROTECTED. Unauthorized access prohibited.', type: 'system', time: ts() },
-    { id: uid(), text: 'Type /help for available commands.', type: 'system', time: ts() },
+    { id: uid(), text: 'Senfoni Chat · E2EE Secure Messaging', type: 'system', time: ts() },
   ]);
+  const [loginKey, setLoginKey] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [loginBusy, setLoginBusy] = useState(false);
+  const [setupName, setSetupName] = useState('');
+  const [needsSetup, setNeedsSetup] = useState(false);
 
   const [input, setInput]           = useState('');
   const [username, setUsername]     = useState<string|null>(null);
@@ -115,6 +115,8 @@ export default function Terminal() {
   const [isSecure, setIsSecure]     = useState(true);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const lastTypingSentRef             = useRef<number>(0);
+  const [dmUsers, setDmUsers] = useState<string[]>([]);
+  const [dmInput, setDmInput] = useState('');
   const [lastSeenCounts, setLastSeenCounts] = useState<Record<string, number>>(() => {
     try {
       if (typeof window !== 'undefined') {
@@ -166,19 +168,7 @@ export default function Terminal() {
       setIsSecure(secure);
       if (!secure && !warnedRef.current) {
         warnedRef.current = true;
-        setLogs(prev => [
-          ...prev,
-          { id: uid(), text: ' ', type: 'warn', time: '' },
-          { id: uid(), text: '╔══════════════════════════════════════════════════════════════════╗', type: 'warn', time: '' },
-          { id: uid(), text: '║  [SECURITY WARNING] INSECURE ORIGIN DETECTED                     ║', type: 'warn', time: '' },
-          { id: uid(), text: '║  E2EE (End-to-End Encryption) requires a Secure Context (HTTPS)  ║', type: 'warn', time: '' },
-          { id: uid(), text: '║  or access via localhost (http://localhost:3000).                ║', type: 'warn', time: '' },
-          { id: uid(), text: '║  Cryptographic protocols (WebCrypto) are blocked by the browser  ║', type: 'warn', time: '' },
-          { id: uid(), text: `║ ${("  Origin: " + window.location.origin).padEnd(64)} ║`, type: 'warn', time: '' },
-          { id: uid(), text: '║  Messaging and Voice features will be non-functional here.       ║', type: 'warn', time: '' },
-          { id: uid(), text: '╚══════════════════════════════════════════════════════════════════╝', type: 'warn', time: '' },
-          { id: uid(), text: ' ', type: 'warn', time: '' },
-        ]);
+        add('⚠️ Güvenli olmayan bağlantı tespit edildi. E2EE için HTTPS gereklidir.', 'warn');
       }
     }
   }, []);
@@ -224,8 +214,7 @@ export default function Terminal() {
 
     fetch('/api/setup').then(r => r.json()).then(d => {
       if (d.uninitialized) {
-        add('System uninitialized. No admin found.', 'error');
-        add('Type /setup [username] to claim the server.', 'warn');
+        setNeedsSetup(true);
       }
     }).catch(() => {});
   }, [add]);
@@ -601,20 +590,18 @@ export default function Terminal() {
           } else {
             add(`ACCESS GRANTED — [${d.username}] USER`, 'success');
           }
-          add(`Session expires in 24h. /help for commands.`);
         } catch { add('ERR: Connection failed.', 'error'); }
         break;
 
       case '/join':
         if (!username) { add('ERR: LOGIN_REQUIRED', 'error'); break; }
         if (args.length < 2) { add('USAGE: /join [room] [key]', 'error'); break; }
-        add(`Connecting to [#${args[0]}]...`);
         try {
           const salt = new TextEncoder().encode('senfoni-salt-' + args[0]);
           const cKey = await deriveKey(args[1], salt);
           const rHash = await hashStr('senfoni-room-' + args[0]);
           setActiveRoom({ name: args[0], hash: rHash, cryptoKey: cKey });
-          setLastPoll(0); setSeenIds(new Set());
+          setLastPoll(0); setSeenIds(new Set()); setLogs([]);
           
           // Save key for auto-join next time
           if (!args[0].startsWith('notes-')) {
@@ -638,7 +625,6 @@ export default function Terminal() {
             body: JSON.stringify({ action: 'join', roomName: args[0], roomKey: args[1] })
           }).catch(() => {});
 
-          add(`E2EE LINK — [#${args[0]}] active.`, 'success');
           // Load history
           const hr = await fetch(`/api/messages?room=${rHash}&_t=${Date.now()}`);
 
@@ -668,8 +654,7 @@ export default function Terminal() {
               } catch {}
             }
             setSeenIds(ids); setLastPoll(maxTs);
-            add(`── ${entries.length} message(s) loaded ──`);
-            setLogs(p => [...p, ...entries]);
+            setLogs(entries);
           }
           setLastSeenCounts(prev => ({
             ...prev,
@@ -696,7 +681,6 @@ export default function Terminal() {
       case '/join-voice':
         if (!username) { add('ERR: LOGIN_REQUIRED', 'error'); break; }
         if (args.length < 2) { add('USAGE: /join-voice [room] [key]', 'error'); break; }
-        add(`Connecting to [🔊${args[0]}]...`);
         try {
           const rHash = await hashStr('senfoni-room-' + args[0]);
           setActiveVoiceRoom({ name: args[0], hash: rHash });
@@ -709,6 +693,19 @@ export default function Terminal() {
         } catch { add('ERR: Failed to join voice.', 'error'); }
         break;
 
+      case '/dm': {
+        if (!username) { add('ERR: LOGIN_REQUIRED', 'error'); break; }
+        if (!args[0]) { add('USAGE: /dm [kullanıcı-adı]', 'error'); break; }
+        const dmTarget = args[0].trim();
+        if (dmTarget === username) { add('Kendinize DM atamazsınız.', 'error'); break; }
+        // DM oda adı: alfabetik sıraya göre birleştir (deterministik)
+        const dmPair = [username, dmTarget].sort().join('-');
+        const dmRoom = `dm-${dmPair}`;
+        // Oda anahtarı olarak kullanıcının API key'ini kullan (her iki taraf da biliyor)
+        setDmUsers(prev => prev.includes(dmTarget) ? prev : [...prev, dmTarget]);
+        exec('/join', [dmRoom, apiKey!]);
+        break;
+      }
       case '/leave-voice':
         if (!activeVoiceRoom) { add('Not in a voice room.', 'error'); break; }
         leaveVoice();
@@ -911,7 +908,7 @@ export default function Terminal() {
         if (lastSeenCounts[activeRoom.hash] !== currentRoom.messageCount) {
           setLastSeenCounts(prev => ({
             ...prev,
-            [activeRoom.hash]: currentRoom.messageCount
+            [activeRoom.hash]: currentRoom.messageCount || 0
           }));
         }
       }
@@ -929,8 +926,7 @@ export default function Terminal() {
   useEffect(() => {
     const savedApiKey = localStorage.getItem('sfn_api_key');
     if (savedApiKey && !username) {
-      add('Recovering secure session...');
-      exec('/login', [savedApiKey]);
+        exec('/login', [savedApiKey]);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -941,134 +937,168 @@ export default function Terminal() {
       const lastRoom = localStorage.getItem('sfn_last_room');
       const lastRoomKey = localStorage.getItem('sfn_last_room_key');
       if (lastRoom && lastRoomKey && !activeRoom) {
-        add(`Reconnecting to last active room [#${lastRoom}]...`);
-        exec('/join', [lastRoom, lastRoomKey]);
+          exec('/join', [lastRoom, lastRoomKey]);
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [username, apiKey]);
 
-  return (
-    <div className="sfn-container" onClick={() => inputRef.current?.focus()}>
-      <div className="scanline" aria-hidden="true" />
 
-      {username && (
-        <aside className="sfn-sidebar">
-          <div className="sb-identity">
-            <div className="sb-label">IDENTITY</div>
-            <div className="sb-user">
-              {role === 'admin' && <span className="badge-mod">MOD</span>}
-              <span>{username}</span>
-            </div>
-          </div>
+  const parseMsgSender = (text: string) => {
+    const idx = text.indexOf(': ');
+    if (idx === -1) return { sender: '', content: text };
+    return { sender: text.substring(0, idx), content: text.substring(idx + 2) };
+  };
+  const handleLoginSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!loginKey.trim()) return;
+    setLoginBusy(true);
+    setLoginError('');
+    try {
+      const r = await fetch('/api/auth', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ apiKey: loginKey.trim() }) });
+      const d = await r.json();
+      if (!d.valid) { setLoginError('Geçersiz API anahtarı.'); setLoginBusy(false); return; }
+      setUsername(d.username); setApiKey(loginKey.trim()); setRole(d.role); setLoginTime(Date.now());
+      localStorage.setItem('sfn_api_key', loginKey.trim());
+      if (d.roomKeys) { const saved = JSON.parse(localStorage.getItem('sfn_keys') || '{}'); localStorage.setItem('sfn_keys', JSON.stringify({ ...saved, ...d.roomKeys })); }
+      if (d.lastRoom && d.lastRoomKey) { localStorage.setItem('sfn_last_room', d.lastRoom); localStorage.setItem('sfn_last_room_key', d.lastRoomKey); }
+      add(`Hoş geldin, ${d.username}!`, d.role === 'admin' ? 'admin' : 'success');
+      if (d.role === 'admin') { const rr = await fetch('/api/rooms', { headers: { 'X-Caller-Key': loginKey.trim() } }); const rd = await rr.json(); if (rd.rooms) setRooms(rd.rooms); }
+    } catch { setLoginError('Bağlantı hatası.'); }
+    setLoginBusy(false);
+  };
 
-          <div className="sb-section">
-            <div className="sb-label">CHANNELS</div>
-            {rooms.filter(r => r.type !== 'voice').length === 0
-              ? <div className="sb-empty">no text channels</div>
-              : rooms.filter(r => r.type !== 'voice').map(r => {
-                const unread = (activeRoom && activeRoom.hash === r.roomHash)
-                  ? 0
-                  : Math.max(0, (r.messageCount || 0) - (lastSeenCounts[r.roomHash] || 0));
+  const handleSetupSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!setupName.trim()) return;
+    setLoginBusy(true);
+    const r = await fetch('/api/setup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: setupName.trim() }) });
+    const d = await r.json();
+    if (d.error) { setLoginError(d.error); } else { setLoginError(''); setNeedsSetup(false); add(d.message, 'admin'); add(`API Key: ${d.apiKey}`, 'success'); add('Bu anahtarı kaydedin! Bir daha gösterilmeyecek.', 'warn'); }
+    setLoginBusy(false);
+  };
 
-                return (
-                  <div key={r.roomHash} className={`sb-room${activeRoom?.name === r.name ? ' active' : ''}${unread > 0 ? ' unread' : ''}`}
-                    onClick={e => { 
-                      e.stopPropagation(); 
-                      const saved = JSON.parse(localStorage.getItem('sfn_keys') || '{}');
-                      const key = saved[r.name];
-                      if (key) {
-                        exec('/join', [r.name, key]);
-                      } else {
-                        setInput(`/join ${r.name} `); 
-                        inputRef.current?.focus(); 
-                      }
-                    }}>
-                    <span className="sb-hash">#</span>
-                    <span className="sb-rname">{r.name}</span>
-                    {unread > 0 && <span className="sb-unread-badge">{unread}</span>}
-                    {activeRoom?.name === r.name && <span className="sb-dot" />}
-                  </div>
-                );
-              })
-            }
-          </div>
-
-          <div className="sb-section">
-            <div className="sb-label">VOICE CHANNELS</div>
-            {rooms.filter(r => r.type === 'voice').length === 0
-              ? <div className="sb-empty">no voice channels</div>
-              : rooms.filter(r => r.type === 'voice').map(r => (
-                <div key={r.roomHash}>
-                  <div className={`sb-room${activeVoiceRoom?.name === r.name ? ' active' : ''}`}
-                    onClick={e => { 
-                      e.stopPropagation(); 
-                      if (activeVoiceRoom?.name === r.name) {
-                        exec('/leave-voice', []);
-                      } else {
-                        const saved = JSON.parse(localStorage.getItem('sfn_keys') || '{}');
-                        const key = saved[r.name];
-                        if (key) {
-                          exec('/join-voice', [r.name, key]);
-                        } else {
-                          setInput(`/join-voice ${r.name} `); 
-                          inputRef.current?.focus(); 
-                        }
-                      }
-                    }}>
-                    <span className="sb-hash">🔊</span>
-                    <span className="sb-rname">{r.name}</span>
-                    {activeVoiceRoom?.name === r.name && <span className="sb-dot" />}
-                  </div>
-                  {(r.activeUsers || []).map(u => (
-                    <div key={u} className="sb-voice-user">
-                      <span className="sb-voice-avatar">🎙️</span>
-                      {u}
-                    </div>
-                  ))}
-                </div>
-              ))
-            }
-          </div>
-
-          <div className="sb-section">
-            <div className="sb-label">PRIVATE</div>
-            <div className={`sb-room${activeRoom?.name === `notes-${username}` ? ' active' : ''}`}
-                 onClick={e => { e.stopPropagation(); exec('/join', [`notes-${username}`, apiKey!]); }}>
-              <span className="sb-hash">🔒</span>
-              <span className="sb-rname">Personal Notes</span>
-              {activeRoom?.name === `notes-${username}` && <span className="sb-dot" />}
-            </div>
-          </div>
-
-          {voiceState.isActive && (
-            <div className="sb-voice">
-              <div className="sb-label">VOICE</div>
-              <div className="sb-voice-status">
-                <span className="voice-indicator" />
-                {voiceState.isMuted ? 'MUTED' : 'LIVE'}
-              </div>
-              {voiceState.peers.length > 0 && (
-                <div className="sb-voice-peers">{voiceState.peers.length} peer(s)</div>
-              )}
-            </div>
+  // Login Screen
+  if (!username) {
+    return (
+      <div className="sfn-login">
+        <div className="sfn-login-card">
+          <div className="sfn-login-badge">🔒 AES-GCM-256 · Uçtan Uca Şifreli</div>
+          <h1><span>Senfoni</span> Chat</h1>
+          <p>Güvenli iletişim platformuna giriş yapın.</p>
+          {needsSetup ? (
+            <form onSubmit={handleSetupSubmit}>
+              <input type="text" placeholder="Admin kullanıcı adı" value={setupName} onChange={e => setSetupName(e.target.value)} disabled={loginBusy} autoFocus />
+              <button type="submit" disabled={loginBusy}>{loginBusy ? 'Kuruluyor...' : 'Sunucuyu Kur'}</button>
+            </form>
+          ) : (
+            <form onSubmit={handleLoginSubmit}>
+              <input type="password" placeholder="API Anahtarınız" value={loginKey} onChange={e => setLoginKey(e.target.value)} disabled={loginBusy} autoFocus />
+              <button type="submit" disabled={loginBusy}>{loginBusy ? 'Doğrulanıyor...' : 'Giriş Yap'}</button>
+            </form>
           )}
+          {loginError && <div className="sfn-login-error">{loginError}</div>}
+        </div>
+      </div>
+    );
+  }
 
-          <div className="sb-footer">
-            <div className="sb-label">SESSION</div>
-            <div className="sb-timer">{expiry}</div>
-            <div className="sb-enc">AES-GCM-256 · E2EE</div>
+  return (
+    <div className="sfn-container">
+      <aside className="sfn-sidebar">
+        <div className="sb-identity">
+          <div className="sb-label">HESAP</div>
+          <div className="sb-user">
+            <div className="sb-avatar">{username[0].toUpperCase()}</div>
+            <div>
+              <div style={{display:'flex',alignItems:'center',gap:6}}>{username} {role === 'admin' && <span className="badge-mod">MOD</span>}</div>
+              <div style={{fontSize:'0.65rem',color:'var(--text3)',marginTop:2}}>{role === 'admin' ? 'Moderatör' : 'Üye'}</div>
+            </div>
           </div>
-        </aside>
-      )}
+        </div>
+
+        <div className="sb-section">
+          <div className="sb-label">KANALLAR</div>
+          {rooms.filter(r => r.type !== 'voice').length === 0
+            ? <div className="sb-empty">Henüz kanal yok</div>
+            : rooms.filter(r => r.type !== 'voice').map(r => {
+              const unread = (activeRoom && activeRoom.hash === r.roomHash) ? 0 : Math.max(0, (r.messageCount || 0) - (lastSeenCounts[r.roomHash] || 0));
+              return (
+                <div key={r.roomHash} className={`sb-room${activeRoom?.name === r.name ? ' active' : ''}${unread > 0 ? ' unread' : ''}`}
+                  onClick={e => { e.stopPropagation(); const saved = JSON.parse(localStorage.getItem('sfn_keys') || '{}'); const key = saved[r.name]; if (key) { exec('/join', [r.name, key]); } else { setInput(`/join ${r.name} `); inputRef.current?.focus(); } }}>
+                  <span className="sb-hash">#</span><span className="sb-rname">{r.name}</span>
+                  {unread > 0 && <span className="sb-unread-badge">{unread}</span>}
+                  {activeRoom?.name === r.name && <span className="sb-dot" />}
+                </div>
+              );
+            })
+          }
+
+          <div className="sb-label" style={{marginTop:16}}>SESLİ KANALLAR</div>
+          {rooms.filter(r => r.type === 'voice').length === 0
+            ? <div className="sb-empty">Henüz sesli kanal yok</div>
+            : rooms.filter(r => r.type === 'voice').map(r => (
+              <div key={r.roomHash}>
+                <div className={`sb-room${activeVoiceRoom?.name === r.name ? ' active' : ''}`}
+                  onClick={e => { e.stopPropagation(); if (activeVoiceRoom?.name === r.name) { exec('/leave-voice', []); } else { const saved = JSON.parse(localStorage.getItem('sfn_keys') || '{}'); const key = saved[r.name]; if (key) { exec('/join-voice', [r.name, key]); } else { setInput(`/join-voice ${r.name} `); inputRef.current?.focus(); } } }}>
+                  <span className="sb-hash">🔊</span><span className="sb-rname">{r.name}</span>
+                  {activeVoiceRoom?.name === r.name && <span className="sb-dot" />}
+                </div>
+                {(r.activeUsers || []).map(u => (<div key={u} className="sb-voice-user"><span className="sb-voice-avatar">🎙️</span>{u}</div>))}
+              </div>
+            ))
+          }
+
+          <div className="sb-label" style={{marginTop:16}}>ÖZEL</div>
+          <div className={`sb-room${activeRoom?.name === `notes-${username}` ? ' active' : ''}`}
+            onClick={e => { e.stopPropagation(); exec('/join', [`notes-${username}`, apiKey!]); }}>
+            <span className="sb-hash">🔒</span><span className="sb-rname">Kişisel Notlar</span>
+            {activeRoom?.name === `notes-${username}` && <span className="sb-dot" />}
+          </div>
+          <div className="sb-label" style={{marginTop:16}}>MESAJLAR</div>
+          {dmUsers.map(dmUser => {
+            const dmRoom = `dm-${[username, dmUser].sort().join('-')}`;
+            return (
+              <div key={dmUser} className={`sb-room${activeRoom?.name === dmRoom ? ' active' : ''}`}
+                onClick={e => { e.stopPropagation(); exec('/dm', [dmUser]); }}>
+                <span className="sb-hash">💬</span><span className="sb-rname">{dmUser}</span>
+                {activeRoom?.name === dmRoom && <span className="sb-dot" />}
+              </div>
+            );
+          })}
+          <div className="sb-dm-input-wrap">
+            <input
+              className="sb-dm-input"
+              placeholder="Kullanıcı adı..."
+              value={dmInput}
+              onChange={e => setDmInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && dmInput.trim()) { exec('/dm', [dmInput.trim()]); setDmInput(''); } }}
+            />
+          </div>
+        </div>
+
+        {voiceState.isActive && (
+          <div className="sb-voice">
+            <div className="sb-label">SESLİ BAĞLANTI</div>
+            <div className="sb-voice-status"><span className="voice-indicator" />{voiceState.isMuted ? 'SESSİZ' : 'CANLI'}</div>
+            {voiceState.peers.length > 0 && <div className="sb-voice-peers">{voiceState.peers.length} bağlı</div>}
+          </div>
+        )}
+
+        <div className="sb-footer">
+          <div className="sb-label">OTURUM</div>
+          <div className="sb-timer">{expiry}</div>
+          <div className="sb-enc">🔒 AES-GCM-256 · E2EE</div>
+        </div>
+      </aside>
 
       <div className="sfn-main">
         <header className="sfn-header">
-          <div className="hdr-brand">SENFONI <span className="hdr-thin">CHAT</span></div>
+          <div className="hdr-brand"><span>Senfoni</span> <span className="hdr-thin">Chat</span></div>
           <div className="hdr-right">
-            {activeRoom && <span className="hdr-room"><span className="hdr-dot" />#{activeRoom.name}</span>}
+            {activeRoom && <span className="hdr-room"><span className="hdr-dot" /> {activeRoom.name.startsWith('dm-') ? '💬 ' + activeRoom.name.replace('dm-', '').replace(`-${username}`, '').replace(`${username}-`, '') : '#' + activeRoom.name}</span>}
             {voiceState.isActive && <span className="hdr-voice">{voiceState.isMuted ? '🔇' : '🎙'}</span>}
-            {busy && <span className="hdr-busy">working...</span>}
+            {busy && <span className="hdr-busy">işleniyor...</span>}
             <span className="hdr-ver">v{APP_VERSION}</span>
           </div>
         </header>
@@ -1076,103 +1106,78 @@ export default function Terminal() {
         <main className="sfn-output" ref={outputRef}>
           {logs.map(log => {
             const isMentioned = username && log.text.toLowerCase().includes(`@${username.toLowerCase()}`);
+            const isMsg = log.type === 'msg';
+            const isOwn = log.isOwn;
+            const { sender, content } = isMsg ? parseMsgSender(log.text) : { sender: '', content: log.text };
+
+            if (isMsg) {
+              return (
+                <div key={log.id} className={`ll msg${isOwn ? ' own-msg' : ''}${isMentioned ? ' mention-pulse' : ''}`}>
+                  {!isOwn && <div className="msg-sender">{sender}</div>}
+                  <span className="ll-text">
+                    {renderTextWithMentions(content, username)}
+                    {log.file && (
+                      <div className="sfn-file-preview">
+                        {log.file.type.startsWith('image/') && log.file.dataUrl
+                          ? <img src={log.file.dataUrl} alt={log.file.name} className="sfn-img" />
+                          : <button className="sfn-file-btn" onClick={() => handleFileAction(log.id, log.file!)} disabled={log.file.loading || log.file.error}>
+                              {log.file.loading ? '⏳ Çözümleniyor...' : log.file.error ? '❌ Başarısız' : log.file.dataUrl ? '💾 Tekrar İndir' : `📄 ${log.file.name} (${Math.round(log.file.size/1024)}KB)`}
+                            </button>
+                        }
+                      </div>
+                    )}
+                  </span>
+                  <div className="msg-meta">
+                    <span>{log.time}</span>
+                    {isOwn && log.status === 'sending' && <span className="ll-tick sending">🕒</span>}
+                    {isOwn && log.status === 'sent' && <span className="ll-tick sent">✓✓</span>}
+                  </div>
+                </div>
+              );
+            }
+
             return (
               <div key={log.id} className={`ll ${log.type}${isMentioned ? ' mention-pulse' : ''}`}>
                 {log.time && <span className="ll-time">{log.time}</span>}
-                {log.type === 'admin'   && <span className="ll-badge admin">[melodi]</span>}
-                {log.type === 'error'   && <span className="ll-badge error">[fail]</span>}
-                {log.type === 'success' && <span className="ll-badge ok">[ok]</span>}
-                {log.type === 'warn'    && <span className="ll-badge warn">[warn]</span>}
-                <span className="ll-text">
-                  {renderTextWithMentions(log.text, username)}
-                  {log.file && (
-                    <div className="sfn-file-preview">
-                      {log.file.type.startsWith('image/') && log.file.dataUrl ? (
-                        <img src={log.file.dataUrl} alt={log.file.name} className="sfn-img" />
-                      ) : (
-                        <button className="sfn-file-btn" onClick={() => handleFileAction(log.id, log.file!)} disabled={log.file.loading || log.file.error}>
-                          {log.file.loading ? '⏳ Decrypting...' : log.file.error ? '❌ Decrypt Failed' : log.file.dataUrl ? '💾 Download Again' : `📄 ${log.file.name} (${Math.round(log.file.size/1024)}KB)`}
-                        </button>
-                      )}
-                    </div>
-                  )}
-                  {log.isOwn && log.status === 'sending' && <span className="ll-tick sending"> 🕒</span>}
-                  {log.isOwn && log.status === 'sent' && <span className="ll-tick sent"> ✓✓</span>}
-                </span>
+                {log.type === 'admin' && <span className="ll-badge admin">[mod]</span>}
+                {log.type === 'error' && <span className="ll-badge error">[!]</span>}
+                {log.type === 'success' && <span className="ll-badge ok">[✓]</span>}
+                {log.type === 'warn' && <span className="ll-badge warn">[!]</span>}
+                <span className="ll-text">{renderTextWithMentions(log.text, username)}</span>
               </div>
             );
           })}
-          <div className="ll system"><span className="blink">█</span></div>
+          <div ref={undefined} />
         </main>
 
-        {/* typingUsers indicator */}
         {typingUsers.filter(u => u !== username).length > 0 && (
           <div className="sfn-typing-indicator">
-            <span className="sfn-typing-prompt">❯</span>
             <span className="sfn-typing-text">
-              {(() => {
-                const others = typingUsers.filter(u => u !== username);
-                if (others.length === 1) return others[0];
-                if (others.length === 2) return `${others[0]} ve ${others[1]}`;
-                return 'Birkaç kişi';
-              })()}
+              {(() => { const others = typingUsers.filter(u => u !== username); if (others.length === 1) return others[0]; if (others.length === 2) return `${others[0]} ve ${others[1]}`; return 'Birkaç kişi'; })()}
             </span>
-            <span className="sfn-typing-suffix">
-              {typingUsers.filter(u => u !== username).length > 2 ? ' yazıyorlar' : ' yazıyor'}
-            </span>
-            <div className="sfn-typing-dots">
-              <span className="sfn-typing-dot" />
-              <span className="sfn-typing-dot" />
-              <span className="sfn-typing-dot" />
-            </div>
+            <span className="sfn-typing-suffix">{typingUsers.filter(u => u !== username).length > 2 ? ' yazıyorlar' : ' yazıyor'}</span>
+            <div className="sfn-typing-dots"><span className="sfn-typing-dot" /><span className="sfn-typing-dot" /><span className="sfn-typing-dot" /></div>
           </div>
         )}
 
         <footer className="sfn-footer">
           <form onSubmit={handleSubmit} className="sfn-form">
-            <span className="sfn-prompt">{username||'guest'}:{activeRoom?`#${activeRoom.name}`:'~'}$</span>
-            <input ref={inputRef} type="text" className="sfn-input" value={input}
-              onChange={e => handleInputChange(e.target.value)} 
-              onKeyDown={e => {
-                if (e.key === 'ArrowUp') {
-                  e.preventDefault();
-                  if (historyIdx < history.length - 1) {
-                    const nextIdx = historyIdx + 1;
-                    setHistoryIdx(nextIdx);
-                    setInput(history[nextIdx]);
-                  }
-                } else if (e.key === 'ArrowDown') {
-                  e.preventDefault();
-                  if (historyIdx > 0) {
-                    const nextIdx = historyIdx - 1;
-                    setHistoryIdx(nextIdx);
-                    setInput(history[nextIdx]);
-                  } else if (historyIdx === 0) {
-                    setHistoryIdx(-1);
-                    setInput('');
-                  }
-                }
-              }}
-              autoFocus spellCheck={false}
-              autoComplete="off" autoCapitalize="off" placeholder={busy?'processing...':''} disabled={busy} />
             {username && (
-              <button 
-                type="button" 
-                className="sfn-upload-btn" 
-                onClick={() => {
-                  if (!activeRoom) { add('ERR: Join a room first.', 'error'); return; }
-                  fileInputRef.current?.click();
-                }}
-                disabled={busy}
-                title="Upload file or image"
-              >
-                📎
-              </button>
+              <button type="button" className="sfn-upload-btn" onClick={() => { if (!activeRoom) { add('Önce bir kanala katılın.', 'error'); return; } fileInputRef.current?.click(); }} disabled={busy} title="Dosya gönder">📎</button>
             )}
+            <input ref={inputRef} type="text" className="sfn-input" value={input}
+              onChange={e => handleInputChange(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'ArrowUp') { e.preventDefault(); if (historyIdx < history.length - 1) { const n = historyIdx + 1; setHistoryIdx(n); setInput(history[n]); } }
+                else if (e.key === 'ArrowDown') { e.preventDefault(); if (historyIdx > 0) { const n = historyIdx - 1; setHistoryIdx(n); setInput(history[n]); } else if (historyIdx === 0) { setHistoryIdx(-1); setInput(''); } }
+              }}
+              autoFocus spellCheck={false} autoComplete="off" autoCapitalize="off"
+              placeholder={busy ? 'İşleniyor...' : activeRoom ? (activeRoom.name.startsWith('dm-') ? `${activeRoom.name.replace('dm-', '').replace(`-${username}`, '').replace(`${username}-`, '')} ile mesajlaş...` : `#${activeRoom.name} kanalına mesaj yaz...`) : 'DM için sidebar\'dan kişi seç...'} disabled={busy} />
+            <button type="submit" className="sfn-send-btn" disabled={busy || !input.trim()}>
+              <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+            </button>
           </form>
-          <div className="sfn-bar">
-            <span>END-TO-END ENCRYPTED</span><span>·</span><span>SENFONI SECURE PROTOCOL</span>
-          </div>
+          <div className="sfn-bar"><span>🔒 UÇTAN UCA ŞİFRELİ</span><span>·</span><span>SENFONI SECURE PROTOCOL</span></div>
         </footer>
         <input type="file" ref={fileInputRef} onChange={handleFileChange} style={{display: 'none'}} />
       </div>
