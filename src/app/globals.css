@@ -89,7 +89,6 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .ll { display: flex; flex-direction: column; animation: fadeUp 0.2s ease; font-size: 0.88rem; line-height: 1.5; padding: 2px 0; }
 @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
- 50% { opacity:0; } }
 
 .ll.msg { max-width: 65%; padding: 10px 16px; border-radius: 16px; margin: 3px 0; background: var(--surface); position: relative; align-self: flex-start; }
 .ll.msg.own-msg { align-self: flex-end; background: var(--accent); color: #000; border-bottom-right-radius: 4px; }
