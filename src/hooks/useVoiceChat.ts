@@ -174,7 +174,14 @@ export function useVoiceChat(
 
     try {
       activeRoomHashRef.current = rHash;
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }, 
+        video: false 
+      });
       streamRef.current = stream;
       activeRef.current = true;
       sinceRef.current = Date.now();
