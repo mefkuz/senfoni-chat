@@ -1225,8 +1225,24 @@ export default function Terminal() {
         {voiceState.isActive && ((voiceState.remoteStreams && voiceState.remoteStreams.length > 0) || voiceState.localScreenStream) && (
           <div style={{ display: 'flex', gap: '8px', padding: '16px', background: 'var(--bg-sidebar)', borderBottom: '1px solid var(--border)', overflowX: 'auto', flexWrap: 'wrap', flexShrink: 0 }}>
             {voiceState.localScreenStream && (
-              <div style={{ flex: '1 1 300px', minWidth: '300px', maxWidth: '600px', background: '#000', borderRadius: '8px', overflow: 'hidden', position: 'relative', border: '2px solid var(--primary)' }}>
-                <div style={{ position: 'absolute', top: 8, left: 8, background: 'var(--primary)', color: '#fff', padding: '2px 8px', borderRadius: '4px', fontSize: '0.8rem', zIndex: 10 }}>Senin Ekranın (Canlı)</div>
+              <div 
+                onClick={(e) => { 
+                  const v = e.currentTarget.querySelector('video'); 
+                  if (v) {
+                    if (v.requestFullscreen) v.requestFullscreen().catch(()=>{}); 
+                    else if ((v as any).webkitRequestFullscreen) (v as any).webkitRequestFullscreen(); 
+                    v.play().catch(()=>{}); 
+                  } 
+                }}
+                style={{ flex: '1 1 300px', minWidth: '300px', maxWidth: '600px', background: '#000', borderRadius: '8px', overflow: 'hidden', position: 'relative', border: '2px solid var(--primary)', cursor: 'pointer', transition: 'all 0.2s ease' }}
+                onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.02)'; e.currentTarget.style.zIndex = '20'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.zIndex = '1'; }}
+              >
+                <div style={{ position: 'absolute', top: 8, left: 8, background: 'var(--primary)', color: '#fff', padding: '4px 10px', borderRadius: '20px', fontSize: '0.85rem', zIndex: 10, display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
+                  <img src={`/api/avatar?username=${username}`} alt={username || ''} style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#fff' }} />
+                  <b>{username}</b> (Sen)
+                </div>
+                <div style={{ position: 'absolute', bottom: 8, right: 8, background: 'rgba(0,0,0,0.6)', color: '#fff', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', zIndex: 10 }}>Büyütmek için tıkla ⛶</div>
                 <video 
                   autoPlay 
                   playsInline 
@@ -1242,9 +1258,25 @@ export default function Terminal() {
               </div>
             )}
             {voiceState.remoteStreams.map(rs => (
-              <div key={rs.peerId} onClick={(e) => { const v = e.currentTarget.querySelector('video'); if (v) v.play().catch(()=>{}); }} style={{ flex: '1 1 300px', minWidth: '300px', maxWidth: '600px', background: '#000', borderRadius: '8px', overflow: 'hidden', position: 'relative', cursor: 'pointer' }}>
-                <div style={{ position: 'absolute', top: 8, left: 8, background: 'rgba(0,0,0,0.6)', color: '#fff', padding: '2px 8px', borderRadius: '4px', fontSize: '0.8rem', zIndex: 10 }}>{rs.peerId} (Canlı)</div>
-                <div style={{ position: 'absolute', bottom: 8, right: 8, background: 'rgba(0,0,0,0.6)', color: '#fff', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', zIndex: 10 }}>Ses yoksa tıkla</div>
+              <div 
+                key={rs.peerId} 
+                onClick={(e) => { 
+                  const v = e.currentTarget.querySelector('video'); 
+                  if (v) {
+                    if (v.requestFullscreen) v.requestFullscreen().catch(()=>{}); 
+                    else if ((v as any).webkitRequestFullscreen) (v as any).webkitRequestFullscreen(); 
+                    v.play().catch(()=>{}); 
+                  } 
+                }}
+                style={{ flex: '1 1 300px', minWidth: '300px', maxWidth: '600px', background: '#000', borderRadius: '8px', overflow: 'hidden', position: 'relative', cursor: 'pointer', border: '1px solid var(--border)', transition: 'all 0.2s ease' }}
+                onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.02)'; e.currentTarget.style.zIndex = '20'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.zIndex = '1'; }}
+              >
+                <div style={{ position: 'absolute', top: 8, left: 8, background: 'rgba(0,0,0,0.7)', color: '#fff', padding: '4px 10px', borderRadius: '20px', fontSize: '0.85rem', zIndex: 10, display: 'flex', alignItems: 'center', gap: '8px', backdropFilter: 'blur(4px)' }}>
+                  <img src={`/api/avatar?username=${rs.peerId}`} alt={rs.peerId} style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#fff' }} />
+                  <b>{rs.peerId}</b> (Canlı)
+                </div>
+                <div style={{ position: 'absolute', bottom: 8, right: 8, background: 'rgba(0,0,0,0.6)', color: '#fff', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', zIndex: 10 }}>Ses veya tam ekran için tıkla ⛶</div>
                 <video 
                   autoPlay 
                   playsInline 
