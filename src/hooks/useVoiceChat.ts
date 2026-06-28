@@ -3,17 +3,12 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 
 // TURN server configuration via environment variables
-const TURN_HOST = process.env.NEXT_PUBLIC_TURN_HOST || 'localhost';
-const TURN_SECRET = process.env.NEXT_PUBLIC_TURN_SECRET || 'changeme';
+const TURN_HOST = process.env.NEXT_PUBLIC_TURN_HOST || '212.87.221.55';
+const TURN_SECRET = process.env.NEXT_PUBLIC_TURN_SECRET || 'sfn_turn_s3cr3t_2024';
 
-// Generate time-limited TURN credentials (RFC 5766 HMAC-SHA1)
 function getTurnCredentials() {
-  const ttl = 86400; // 24h
-  const unixTime = Math.floor(Date.now() / 1000) + ttl;
-  const username = `${unixTime}:senfoni`;
-  // Browser can't run crypto in this context, use static for now
-  // In production: generate server-side via /api/turn-creds
-  return { username, credential: TURN_SECRET };
+  // Use static credentials since we're updating the coturn server to use static auth instead of short-lived HMAC
+  return { username: 'senfoni', credential: TURN_SECRET };
 }
 
 const { username: TURN_USER, credential: TURN_CRED } = getTurnCredentials();
