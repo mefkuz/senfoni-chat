@@ -4,7 +4,7 @@
  * POST {room, sender, type, target?, data} — send signaling message
  */
 import { NextResponse } from 'next/server';
-import { getUserByApiKey, getVoiceSignals, saveVoiceSignal, updateVoicePresence } from '@/lib/db';
+import { getUserByApiKey, getVoiceSignals, saveVoiceSignal, updateVoicePresence, removeVoicePresence } from '@/lib/db';
 
 export async function GET(request: Request) {
   const callerKey = request.headers.get('X-Caller-Key');
@@ -40,6 +40,11 @@ export async function POST(request: Request) {
   try {
     const { room, type, target, data } = await request.json();
     if (!room || !type || !data) return NextResponse.json({ error: 'MISSING_FIELDS' }, { status: 400 });
+    
+    if (type === 'leave') {
+      removeVoicePresence(room, user.username);
+    }
+    
     const signal = saveVoiceSignal({ room, sender: user.username, type, target, data, timestamp: Date.now() });
     return NextResponse.json(signal);
   } catch {

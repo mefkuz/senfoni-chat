@@ -394,6 +394,17 @@ export function updateVoicePresence(roomHash: string, username: string): void {
   writeJson(PRESENCE_FILE, p);
 }
 
+export function removeVoicePresence(roomHash: string, username: string): void {
+  try {
+    validateHash(roomHash);
+    const p = readPresence();
+    if (p[roomHash] && p[roomHash][username]) {
+      delete p[roomHash][username];
+      writeJson(PRESENCE_FILE, p);
+    }
+  } catch {}
+}
+
 export function getVoicePresence(roomHash: string): string[] {
   try { validateHash(roomHash); } catch { return []; }
   const p = readPresence();
