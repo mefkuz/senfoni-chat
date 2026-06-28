@@ -72,6 +72,7 @@ export interface UserRecord {
   lastRoom?: string;
   lastRoomKey?: string;
   roomKeys?: Record<string, string>;
+  avatar?: string;
 }
 export interface RoomRecord {
   name: string; roomHash: string; createdAt: number; createdBy: string; type?: 'text' | 'voice';
@@ -195,6 +196,13 @@ export function leaveUserRoom(username: string): void {
   if (!users[username]) return;
   delete users[username].lastRoom;
   delete users[username].lastRoomKey;
+  writeJson(USERS_FILE, users);
+}
+
+export function updateAvatar(username: string, avatarUrl: string): void {
+  const users = readUsers();
+  if (!users[username]) return;
+  users[username].avatar = avatarUrl;
   writeJson(USERS_FILE, users);
 }
 

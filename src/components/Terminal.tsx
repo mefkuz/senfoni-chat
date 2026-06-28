@@ -99,6 +99,7 @@ export default function Terminal() {
 
   const [input, setInput]           = useState('');
   const [username, setUsername]     = useState<string|null>(null);
+  const [avatars, setAvatars] = useState<Record<string, string>>({});
   const [apiKey, setApiKey]         = useState<string|null>(null);
   const [role, setRole]             = useState<'admin'|'user'|null>(null);
   const [activeRoom, setActiveRoom] = useState<ActiveRoom|null>(null);
@@ -591,6 +592,7 @@ export default function Terminal() {
           } else {
             add(`ACCESS GRANTED — [${d.username}] USER`, 'success');
           }
+          fetchAvatars(args[0]);
         } catch { add('ERR: Connection failed.', 'error'); }
         break;
 
@@ -963,6 +965,15 @@ export default function Terminal() {
     if (idx === -1) return { sender: '', content: text };
     return { sender: text.substring(0, idx), content: text.substring(idx + 2) };
   };
+  
+  const fetchAvatars = async (key: string) => {
+    try {
+      const res = await fetch('/api/avatar', { headers: { 'X-Caller-Key': key } });
+      const data = await res.json();
+      if (data.avatars) setAvatars(data.avatars);
+    } catch {}
+  };
+
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!loginKey.trim()) return;
@@ -978,6 +989,7 @@ export default function Terminal() {
       if (d.lastRoom && d.lastRoomKey) { localStorage.setItem('sfn_last_room', d.lastRoom); localStorage.setItem('sfn_last_room_key', d.lastRoomKey); }
       add(`Hoş geldin, ${d.username}!`, d.role === 'admin' ? 'admin' : 'success');
       if (d.role === 'admin') { const rr = await fetch('/api/rooms', { headers: { 'X-Caller-Key': loginKey.trim() } }); const rd = await rr.json(); if (rd.rooms) setRooms(rd.rooms); }
+      fetchAvatars(loginKey.trim());
     } catch { setLoginError('Bağlantı hatası.'); }
     setLoginBusy(false);
   };
@@ -1024,7 +1036,9 @@ export default function Terminal() {
         <div className="sb-identity">
           <div className="sb-label">HESAP</div>
           <div className="sb-user">
-            <div className="sb-avatar">{username[0].toUpperCase()}</div>
+            <div className="sb-avatar" onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.onchange = async (e: any) => { const file = e.target.files[0]; if (!file) return; const formData = new FormData(); formData.append('file', file); setBusy(true); try { const res = await fetch('/api/avatar', { method: 'POST', headers: { 'X-Caller-Key': apiKey! }, body: formData }); const data = await res.json(); if (data.success) { fetchAvatars(apiKey!); add('Profil fotoğrafı güncellendi!', 'success'); } else { add('Hata: ' + data.error, 'error'); } } catch (err) { add('Fotoğraf yüklenemedi.', 'error'); } setBusy(false); }; input.click(); }} style={{ cursor: 'pointer', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent' }} title="Profil Fotoğrafını Değiştir">
+              {avatars[username] ? <img src={avatars[username]} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Avatar" /> : username[0].toUpperCase()}
+            </div>
             <div>
               <div style={{display:'flex',alignItems:'center',gap:6}}>{username} {role === 'admin' && <span className="badge-mod">MOD</span>}</div>
               <div style={{fontSize:'0.65rem',color:'var(--text3)',marginTop:2}}>{role === 'admin' ? 'Moderatör' : 'Üye'}</div>
