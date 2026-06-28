@@ -14,7 +14,7 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); overflow: hidden; }
-.scanline { display: none; }
+
 
 /* Layout */
 .sfn-container { width: 100vw; height: 100vh; display: flex; background: var(--bg); }
@@ -25,7 +25,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .sfn-login-card h1 { font-size: 1.8rem; font-weight: 700; margin-bottom: 0.3rem; }
 .sfn-login-card h1 span { color: var(--accent); }
 .sfn-login-card p { color: var(--text2); font-size: 0.85rem; margin-bottom: 2rem; }
-.sfn-login-card input { width: 100%; padding: 1rem; background: var(--bg2); border: 1px solid var(--border); color: var(--text); border-radius: var(--radius-sm); font-family: var(--mono); font-size: 0.85rem; outline: none; margin-bottom: 1rem; transition: border-color 0.2s; }
+.sfn-login-card input { width: 100%; padding: 1rem; background: var(--bg2); border: 1px solid var(--border); color: var(--text); border-radius: var(--radius-sm); font-family: var(--sans); font-size: 0.85rem; outline: none; margin-bottom: 1rem; transition: border-color 0.2s; }
 .sfn-login-card input:focus { border-color: var(--accent); }
 .sfn-login-card button { width: 100%; padding: 1rem; background: var(--accent); color: #000; font-weight: 700; border: none; border-radius: var(--radius-sm); font-size: 1rem; cursor: pointer; transition: all 0.2s; }
 .sfn-login-card button:hover { background: #27ae60; transform: translateY(-1px); }
@@ -60,7 +60,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .sb-voice-peers { font-size: 0.65rem; color: var(--text3); margin-top: 4px; }
 
 .sb-footer { padding: 16px; border-top: 1px solid var(--border); }
-.sb-timer { font-size: 0.95rem; font-weight: 600; color: var(--text); margin: 4px 0 6px; font-family: var(--mono); }
+.sb-timer { font-size: 0.95rem; font-weight: 600; color: var(--text); margin: 4px 0 6px; font-family: var(--sans); }
 .sb-enc { font-size: 0.6rem; color: var(--text3); display: flex; align-items: center; gap: 4px; }
 
 .sb-room.unread { color: var(--text) !important; font-weight: 700; }
@@ -78,7 +78,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .hdr-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
 .hdr-busy { color: var(--orange); animation: blink-anim 1s step-end infinite; }
 .hdr-voice { font-size: 1rem; }
-.hdr-ver { color: var(--text3); font-family: var(--mono); font-size: 0.7rem; }
+.hdr-ver { color: var(--text3); font-family: var(--sans); font-size: 0.7rem; }
 
 /* Messages */
 .sfn-output { flex: 1; padding: 16px 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; scrollbar-width: thin; scrollbar-color: var(--border2) transparent; }
@@ -89,7 +89,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .ll { display: flex; flex-direction: column; animation: fadeUp 0.2s ease; font-size: 0.88rem; line-height: 1.5; padding: 2px 0; }
 @keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
-@keyframes blink-anim { 0%,100% { opacity:1; } 50% { opacity:0; } }
+ 50% { opacity:0; } }
 
 .ll.msg { max-width: 65%; padding: 10px 16px; border-radius: 16px; margin: 3px 0; background: var(--surface); position: relative; align-self: flex-start; }
 .ll.msg.own-msg { align-self: flex-end; background: var(--accent); color: #000; border-bottom-right-radius: 4px; }
@@ -112,7 +112,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
   max-width: none; background: none; padding: 4px 0; align-self: center; text-align: center; flex-direction: row; align-items: center; gap: 8px; font-size: 0.78rem; border-radius: 0;
 }
 .ll.system .ll-text { color: var(--text3); }
-.ll.user .ll-text { color: var(--text2); font-family: var(--mono); font-size: 0.8rem; }
+.ll.user .ll-text { color: var(--text2); font-family: var(--sans); font-size: 0.8rem; }
 .ll.admin .ll-text { color: var(--cyan); }
 .ll.error .ll-text { color: var(--red); }
 .ll.success .ll-text { color: var(--green); }
@@ -123,7 +123,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .ll-tick.sent { color: var(--green); }
 .ll.msg.own-msg .ll-tick.sent { color: rgba(0,0,0,0.4); }
 
-.blink { display: none; }
+
 
 /* Mention */
 .sfn-mention { color: var(--accent); font-weight: 600; padding: 0 2px; }
@@ -160,8 +160,8 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 
 /* Typing */
 .sfn-typing-indicator { padding: 8px 24px; font-size: 0.78rem; color: var(--text2); display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-.sfn-typing-indicator::after { display: none; }
-.sfn-typing-prompt { display: none; }
+
+
 .sfn-typing-text { color: var(--accent); font-weight: 600; }
 .sfn-typing-suffix { color: var(--text3); }
 .sfn-typing-dots { display: flex; gap: 3px; align-items: center; margin-left: 4px; }
@@ -253,4 +253,140 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
   .ll.msg {
     max-width: 85%;
   }
+}
+
+/* Chat Bubbles */
+.sfn-output {
+  background: var(--bg);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ll.msg {
+  display: flex;
+  flex-direction: column;
+  max-width: 85%;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: #1c1c1d;
+  color: #ffffff;
+  font-family: var(--sans);
+  position: relative;
+  align-self: flex-start;
+  border-bottom-left-radius: 4px;
+}
+
+.ll.msg.own-msg {
+  align-self: flex-end;
+  background: #ffffff;
+  color: #000000;
+  border-bottom-right-radius: 4px;
+  border-bottom-left-radius: 12px;
+}
+
+.msg-sender {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #888888;
+  margin-bottom: 2px;
+}
+
+.ll.msg.own-msg .msg-sender {
+  display: none;
+}
+
+.ll-text {
+  font-size: 0.95rem;
+  line-height: 1.4;
+  word-wrap: break-word;
+}
+
+.msg-meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  font-size: 0.7rem;
+  color: #aaaaaa;
+  margin-top: 4px;
+  align-self: flex-end;
+  line-height: 1;
+}
+
+.ll.msg.own-msg .msg-meta {
+  color: #666666;
+}
+
+.ll-tick.sent {
+  color: #000000;
+  font-weight: 700;
+  font-size: 0.75rem;
+}
+
+.ll-tick.sending {
+  color: #888888;
+}
+
+/* Hide system logs slightly */
+.ll.system, .ll.admin, .ll.warn, .ll.error, .ll.success, .ll.user {
+  align-self: center;
+  background: rgba(255,255,255,0.1);
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  margin: 8px 0;
+  text-align: center;
+  color: #cccccc;
+  max-width: 90%;
+}
+
+.sfn-input {
+  font-family: var(--sans) !important;
+  font-size: 1rem !important;
+  background: #141414 !important;
+  border-radius: 20px !important;
+  padding: 10px 16px !important;
+  border: none !important;
+  color: #ffffff !important;
+}
+
+.sfn-form {
+  background: #000000;
+  padding: 10px 16px;
+  border-top: none;
+}
+
+.sfn-send-btn {
+  background: #ffffff !important;
+  border-radius: 50% !important;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sfn-send-btn svg {
+  fill: #000000;
+  width: 20px;
+  height: 20px;
+  margin-left: 2px;
+}
+
+.sfn-bar {
+  display: none; /* Hide bottom bar */
+}
+
+.sfn-header {
+  background: #141414;
+  border-bottom: 1px solid #222222 !important;
+}
+
+.sfn-sidebar {
+  background: #0a0a0a;
+}
+.sb-footer {
+  display: none;
 }

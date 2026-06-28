@@ -509,7 +509,7 @@ export default function Terminal() {
       else add('ERR: Join a room first. /join [room] [key]', 'error');
       return;
     }
-    add(`$ ${raw}`, 'user');
+    add(raw, 'user');
     const parts = raw.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
     const cmd = parts[0].toLowerCase();
     const args = parts.slice(1).map(a => a.replace(/^"|"$/g, ''));
