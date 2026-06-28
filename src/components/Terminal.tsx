@@ -1114,7 +1114,15 @@ export default function Terminal() {
               }
               const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.onchange = async (e: any) => { const file = e.target.files[0]; if (!file) return; const formData = new FormData(); formData.append('file', file); setBusy(true); try { const res = await fetch('/api/avatar', { method: 'POST', headers: { 'X-Caller-Key': apiKey! }, body: formData }); const data = await res.json(); if (data.success) { fetchAvatars(apiKey!); add('Profil fotoğrafı güncellendi!', 'success'); } else { add('Hata: ' + data.error, 'error'); } } catch (err) { add('Fotoğraf yüklenemedi.', 'error'); } setBusy(false); }; input.click(); 
             }} style={{ cursor: 'pointer', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Profil Fotoğrafını Değiştir">
-              {avatars[username] ? <img src={avatars[username]} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Avatar" /> : username[0].toUpperCase()}
+              {avatars[username] ? (
+                <img 
+                  src={avatars[username]} 
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                  alt="Avatar" 
+                  onError={(e) => { e.currentTarget.style.display = 'none'; const f = e.currentTarget.parentElement?.querySelector('.fallback'); if(f) (f as any).style.display = 'block'; }} 
+                />
+              ) : null}
+              <div className="fallback" style={{ display: avatars[username] ? 'none' : 'block' }}>{username[0].toUpperCase()}</div>
             </div>
             <div>
               <div style={{display:'flex',alignItems:'center',gap:6}}>{username} {role === 'admin' && <span className="badge-mod">MOD</span>}</div>
@@ -1240,7 +1248,17 @@ export default function Terminal() {
                 onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.zIndex = '1'; }}
               >
                 <div style={{ position: 'absolute', top: 8, left: 8, background: 'var(--primary)', color: '#fff', padding: '4px 10px', borderRadius: '20px', fontSize: '0.85rem', zIndex: 10, display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
-                  {username && avatars[username] && <img src={avatars[username]} alt={username || ''} style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#fff', objectFit: 'cover' }} />}
+                  {username && avatars[username] && (
+                    <img 
+                      src={avatars[username]} 
+                      alt={username || ''} 
+                      style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#fff', objectFit: 'cover' }} 
+                      onError={(e) => { e.currentTarget.style.display = 'none'; const fallback = e.currentTarget.parentElement?.querySelector('.fallback-avatar') as HTMLElement; if (fallback) fallback.style.display = 'flex'; }}
+                    />
+                  )}
+                  <div className="fallback-avatar" style={{ display: (username && avatars[username]) ? 'none' : 'flex', width: '20px', height: '20px', borderRadius: '50%', background: 'rgba(0,0,0,0.3)', color: '#fff', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 'bold' }}>
+                    {username ? username[0].toUpperCase() : '?'}
+                  </div>
                   <b>{username}</b> (Sen)
                 </div>
                 <div style={{ position: 'absolute', bottom: 8, right: 8, background: 'rgba(0,0,0,0.6)', color: '#fff', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', zIndex: 10 }}>Büyütmek için tıkla ⛶</div>
@@ -1275,7 +1293,17 @@ export default function Terminal() {
                 onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.zIndex = '1'; }}
               >
                 <div style={{ position: 'absolute', top: 8, left: 8, background: 'rgba(0,0,0,0.7)', color: '#fff', padding: '4px 10px', borderRadius: '20px', fontSize: '0.85rem', zIndex: 10, display: 'flex', alignItems: 'center', gap: '8px', backdropFilter: 'blur(4px)' }}>
-                  {avatars[rs.peerId] && <img src={avatars[rs.peerId]} alt={rs.peerId} style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#fff', objectFit: 'cover' }} />}
+                  {avatars[rs.peerId] && (
+                    <img 
+                      src={avatars[rs.peerId]} 
+                      alt={rs.peerId} 
+                      style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#fff', objectFit: 'cover' }} 
+                      onError={(e) => { e.currentTarget.style.display = 'none'; const fallback = e.currentTarget.parentElement?.querySelector('.fallback-avatar') as HTMLElement; if (fallback) fallback.style.display = 'flex'; }}
+                    />
+                  )}
+                  <div className="fallback-avatar" style={{ display: avatars[rs.peerId] ? 'none' : 'flex', width: '20px', height: '20px', borderRadius: '50%', background: 'rgba(255,255,255,0.2)', color: '#fff', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 'bold' }}>
+                    {rs.peerId[0].toUpperCase()}
+                  </div>
                   <b>{rs.peerId}</b> (Canlı)
                 </div>
                 <div style={{ position: 'absolute', bottom: 8, right: 8, background: 'rgba(0,0,0,0.6)', color: '#fff', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', zIndex: 10 }}>Ses veya tam ekran için tıkla ⛶</div>
