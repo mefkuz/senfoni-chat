@@ -1302,12 +1302,12 @@ export default function Terminal() {
                         <span style={{ fontSize: '10px' }}>🔊</span>
                         <input 
                           type="range" min="0" max="1" step="0.05" defaultValue="1" 
-                          onChange={(e) => { const v = e.currentTarget.parentElement?.parentElement?.parentElement?.querySelector('video'); if (v) v.volume = parseFloat(e.currentTarget.value); }}
+                          onChange={(e) => { const a = e.currentTarget.parentElement?.parentElement?.parentElement?.querySelector('audio') as HTMLAudioElement; if (a) a.volume = parseFloat(e.currentTarget.value); }}
                           style={{ width: '50px' }}
                         />
                       </div>
                     </div>
-                    <video autoPlay playsInline style={{ display: 'none' }} ref={v => { if (v && v.srcObject !== rs.stream) { v.srcObject = rs.stream; v.play().catch(()=>{}); } }} />
+                    <audio autoPlay ref={a => { if (a && a.srcObject !== rs.stream) { a.srcObject = rs.stream; a.play().catch(()=>{}); } }} />
                   </div>
                 );
               }

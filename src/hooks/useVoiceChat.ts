@@ -243,6 +243,13 @@ export function useVoiceChat(
   
   const shareScreen = useCallback(async () => {
     if (!activeRef.current || state.isScreenSharing) return;
+    
+    // Check if screen sharing is supported (not available on most mobile browsers)
+    if (!navigator.mediaDevices?.getDisplayMedia) {
+      addLog('ERR: Ekran paylaşımı bu cihazda desteklenmiyor. Masaüstü tarayıcı kullanın.', 'error');
+      return;
+    }
+    
     try {
       const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
       const screenTrack = screenStream.getVideoTracks()[0];
