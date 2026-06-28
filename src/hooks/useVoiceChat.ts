@@ -251,12 +251,12 @@ export function useVoiceChat(
         setState(s => ({ ...s, isScreenSharing: false, localScreenStream: null }));
       };
 
-      pcsRef.current.forEach(pc => {
+      pcsRef.current.forEach(async (pc, peerId) => {
         pc.addTrack(screenTrack, streamRef.current!);
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        sendSignal('offer', JSON.stringify(offer), peerId);
       });
-      // We also need to renegotiate, but since simple P2P, we might need to send a new offer.
-      // To keep it simple, we just send an 'announce' to trigger renegotiation.
-      sendSignal('announce', '{}');
     } catch (err) {
       addLog('Ekran paylasimi iptal edildi veya hata olustu.', 'error');
     }
