@@ -203,7 +203,7 @@ export default function Terminal() {
     setLogs(p => [...p, { id: uid(), text, type, time: ts() }]);
   }, []);
 
-  const { voiceState, joinVoice, leaveVoice, toggleMute } = useVoiceChat(
+  const { voiceState, joinVoice, leaveVoice, toggleMute, shareScreen } = useVoiceChat(
     username, apiKey, add as any
   );
 
@@ -221,19 +221,23 @@ export default function Terminal() {
     }).catch(() => {});
   }, [add]);
 
-  // Auto-scroll (only if near bottom)
+  // Auto-scroll
   useEffect(() => { 
     if (!outputRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = outputRef.current;
-    if (scrollHeight - scrollTop - clientHeight < 150) {
-      outputRef.current.scrollTo({ top: scrollHeight, behavior: 'smooth' }); 
+    // Always scroll to bottom if we just loaded a bunch of logs initially, 
+    // or if we are near the bottom.
+    // A simple heuristic: if it's the first time logs populate for this room, scroll down.
+    if (scrollHeight - scrollTop - clientHeight < 150 || !outputRef.current.dataset.scrolledForRoom) {
+      outputRef.current.scrollTo({ top: scrollHeight, behavior: 'smooth' });
+      if (logs.length > 0) outputRef.current.dataset.scrolledForRoom = activeRoom?.hash || 'none';
     }
-  }, [logs]);
+  }, [logs, activeRoom]);
 
   // Force instant scroll to bottom when switching rooms
   useEffect(() => {
     if (!activeRoom || !outputRef.current) return;
-    
+    delete outputRef.current.dataset.scrolledForRoom;
     const scrollInstant = () => {
       if (outputRef.current) {
         outputRef.current.scrollTop = outputRef.current.scrollHeight;
@@ -1124,6 +1128,29 @@ export default function Terminal() {
             <div className="sb-label">SESLİ BAĞLANTI</div>
             <div className="sb-voice-status"><span className="voice-indicator" />{voiceState.isMuted ? 'SESSİZ' : 'CANLI'}</div>
             {voiceState.peers.length > 0 && <div className="sb-voice-peers">{voiceState.peers.length} bağlı</div>}
+            <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+              <button onClick={() => toggleMute()} style={{ flex: 1, padding: '4px', background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '4px', cursor: 'pointer' }}>
+                {voiceState.isMuted ? 'Mikrofonu Aç' : 'Sustur'}
+              </button>
+              <button onClick={() => shareScreen && shareScreen()} style={{ flex: 1, padding: '4px', background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '4px', cursor: 'pointer' }}>
+                Ekran Paylaş
+              </button>
+            </div>
+            {voiceState.remoteStreams && voiceState.remoteStreams.length > 0 && (
+              <div style={{ marginTop: '12px' }}>
+                <div className="sb-label" style={{ marginBottom: '4px' }}>YAYINLAR</div>
+                {voiceState.remoteStreams.map(rs => (
+                  <video 
+                    key={rs.peerId} 
+                    autoPlay 
+                    playsInline 
+                    ref={v => { if (v && v.srcObject !== rs.stream) v.srcObject = rs.stream; }} 
+                    style={{ width: '100%', borderRadius: '4px', background: '#000', marginBottom: '8px' }}
+                    title={rs.peerId}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
 

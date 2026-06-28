@@ -39,6 +39,7 @@ interface VoiceState {
   isMuted: boolean;
   peers: string[];
   error: string | null;
+  remoteStreams: { peerId: string; stream: MediaStream }[];
 }
 
 export function useVoiceChat(
@@ -46,7 +47,7 @@ export function useVoiceChat(
   apiKey: string | null,
   addLog: (text: string, type?: string) => void,
 ) {
-  const [state, setState] = useState<VoiceState>({ isActive: false, isMuted: false, peers: [], error: null });
+  const [state, setState] = useState<VoiceState>({ isActive: false, isMuted: false, peers: [], error: null, remoteStreams: [] });
   const pcsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
   const streamRef = useRef<MediaStream | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -61,7 +62,7 @@ export function useVoiceChat(
     pcsRef.current.clear();
     streamRef.current?.getTracks().forEach(t => t.stop());
     streamRef.current = null;
-    setState({ isActive: false, isMuted: false, peers: [], error: null });
+    setState({ isActive: false, isMuted: false, peers: [], error: null, remoteStreams: [] });
     activeRoomHashRef.current = null;
   }, []);
 
@@ -90,11 +91,14 @@ export function useVoiceChat(
       streamRef.current.getTracks().forEach(track => pc.addTrack(track, streamRef.current!));
     }
 
-    // Handle remote audio
+    // Handle remote tracks (audio + video)
     pc.ontrack = (e) => {
-      const audio = new Audio();
-      audio.srcObject = e.streams[0];
-      audio.play().catch(() => {});
+      const stream = e.streams[0];
+      setState(s => {
+        // Remove existing stream for this peer if any
+        const filtered = s.remoteStreams.filter(rs => rs.peerId !== peerId);
+        return { ...s, remoteStreams: [...filtered, { peerId, stream }] };
+      });
     };
 
     // ICE candidates
@@ -217,6 +221,33 @@ export function useVoiceChat(
     }
   }, [state.isMuted, addLog]);
 
-  return { voiceState: state, joinVoice, leaveVoice, toggleMute };
+  
+  const shareScreen = useCallback(async () => {
+    if (!activeRef.current) return;
+    try {
+      const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+      const screenTrack = screenStream.getVideoTracks()[0];
+      
+      screenTrack.onended = () => {
+        // Stop sharing
+        pcsRef.current.forEach(pc => {
+          const senders = pc.getSenders();
+          const sender = senders.find(s => s.track?.kind === 'video');
+          if (sender) pc.removeTrack(sender);
+        });
+      };
+
+      pcsRef.current.forEach(pc => {
+        pc.addTrack(screenTrack, streamRef.current!);
+      });
+      // We also need to renegotiate, but since simple P2P, we might need to send a new offer.
+      // To keep it simple, we just send an 'announce' to trigger renegotiation.
+      sendSignal('announce', '{}');
+    } catch (err) {
+      addLog('Ekran paylasimi iptal edildi veya hata olustu.', 'error');
+    }
+  }, [sendSignal, addLog]);
+
+  return { voiceState: state, joinVoice, leaveVoice, toggleMute, shareScreen };
 }
 
