@@ -41,6 +41,7 @@ interface VoiceState {
   error: string | null;
   remoteStreams: { peerId: string; stream: MediaStream }[];
   isScreenSharing: boolean;
+  localScreenStream: MediaStream | null;
 }
 
 export function useVoiceChat(
@@ -48,9 +49,10 @@ export function useVoiceChat(
   apiKey: string | null,
   addLog: (text: string, type?: string) => void,
 ) {
-  const [state, setState] = useState<VoiceState>({ isActive: false, isMuted: false, peers: [], error: null, remoteStreams: [], isScreenSharing: false });
+  const [state, setState] = useState<VoiceState>({ isActive: false, isMuted: false, peers: [], error: null, remoteStreams: [], isScreenSharing: false, localScreenStream: null });
   const pcsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
   const streamRef = useRef<MediaStream | null>(null);
+  const screenStreamRef = useRef<MediaStream | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const sinceRef = useRef<number>(0);
   const activeRef = useRef(false);
@@ -63,7 +65,9 @@ export function useVoiceChat(
     pcsRef.current.clear();
     streamRef.current?.getTracks().forEach(t => t.stop());
     streamRef.current = null;
-    setState({ isActive: false, isMuted: false, peers: [], error: null, remoteStreams: [], isScreenSharing: false });
+    screenStreamRef.current?.getTracks().forEach(t => t.stop());
+    screenStreamRef.current = null;
+    setState({ isActive: false, isMuted: false, peers: [], error: null, remoteStreams: [], isScreenSharing: false, localScreenStream: null });
     activeRoomHashRef.current = null;
   }, []);
 
@@ -169,7 +173,7 @@ export function useVoiceChat(
       activeRef.current = true;
       sinceRef.current = Date.now();
 
-      setState({ isActive: true, isMuted: false, peers: [], error: null, remoteStreams: [], isScreenSharing: false });
+      setState({ isActive: true, isMuted: false, peers: [], error: null, remoteStreams: [], isScreenSharing: false, localScreenStream: null });
       addLog('VOICE: Microphone active. Connecting...', 'success');
 
       // Start polling for signaling messages
@@ -231,8 +235,9 @@ export function useVoiceChat(
     try {
       const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
       const screenTrack = screenStream.getVideoTracks()[0];
+      screenStreamRef.current = screenStream;
       
-      setState(s => ({ ...s, isScreenSharing: true }));
+      setState(s => ({ ...s, isScreenSharing: true, localScreenStream: screenStream }));
 
       screenTrack.onended = () => {
         // Stop sharing
@@ -241,7 +246,8 @@ export function useVoiceChat(
           const sender = senders.find(s => s.track?.kind === 'video');
           if (sender) pc.removeTrack(sender);
         });
-        setState(s => ({ ...s, isScreenSharing: false }));
+        screenStreamRef.current = null;
+        setState(s => ({ ...s, isScreenSharing: false, localScreenStream: null }));
       };
 
       pcsRef.current.forEach(pc => {
