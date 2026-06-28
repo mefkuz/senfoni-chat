@@ -1287,7 +1287,7 @@ export default function Terminal() {
               
               if (!hasVideo) {
                 return (
-                  <div key={rs.peerId} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-card)', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                  <div key={rs.peerId} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-card)', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border)', height: 'fit-content', alignSelf: 'flex-start' }}>
                     <div style={{ position: 'relative' }}>
                       {avatars[rs.peerId] && (
                         <img src={avatars[rs.peerId]} alt={rs.peerId} style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} onError={(e) => { e.currentTarget.style.display = 'none'; const fallback = e.currentTarget.parentElement?.querySelector('.fallback-avatar') as HTMLElement; if (fallback) fallback.style.display = 'flex'; }} />
