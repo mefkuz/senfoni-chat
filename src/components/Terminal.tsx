@@ -1036,7 +1036,20 @@ export default function Terminal() {
         <div className="sb-identity">
           <div className="sb-label">HESAP</div>
           <div className="sb-user">
-            <div className="sb-avatar" onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.onchange = async (e: any) => { const file = e.target.files[0]; if (!file) return; const formData = new FormData(); formData.append('file', file); setBusy(true); try { const res = await fetch('/api/avatar', { method: 'POST', headers: { 'X-Caller-Key': apiKey! }, body: formData }); const data = await res.json(); if (data.success) { fetchAvatars(apiKey!); add('Profil fotoğrafı güncellendi!', 'success'); } else { add('Hata: ' + data.error, 'error'); } } catch (err) { add('Fotoğraf yüklenemedi.', 'error'); } setBusy(false); }; input.click(); }} style={{ cursor: 'pointer', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent' }} title="Profil Fotoğrafını Değiştir">
+            <div className="sb-avatar" onClick={() => { 
+              if (avatars[username]) {
+                const remove = window.confirm('Profil fotoğrafını kaldırmak ve varsayılana dönmek istiyor musun?');
+                if (remove) {
+                  setBusy(true);
+                  fetch('/api/avatar', { method: 'DELETE', headers: { 'X-Caller-Key': apiKey! } })
+                    .then(res => res.json())
+                    .then(data => { if (data.success) { fetchAvatars(apiKey!); add('Varsayılan profile dönüldü.', 'success'); } })
+                    .finally(() => setBusy(false));
+                  return;
+                }
+              }
+              const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.onchange = async (e: any) => { const file = e.target.files[0]; if (!file) return; const formData = new FormData(); formData.append('file', file); setBusy(true); try { const res = await fetch('/api/avatar', { method: 'POST', headers: { 'X-Caller-Key': apiKey! }, body: formData }); const data = await res.json(); if (data.success) { fetchAvatars(apiKey!); add('Profil fotoğrafı güncellendi!', 'success'); } else { add('Hata: ' + data.error, 'error'); } } catch (err) { add('Fotoğraf yüklenemedi.', 'error'); } setBusy(false); }; input.click(); 
+            }} style={{ cursor: 'pointer', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Profil Fotoğrafını Değiştir">
               {avatars[username] ? <img src={avatars[username]} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Avatar" /> : username[0].toUpperCase()}
             </div>
             <div>

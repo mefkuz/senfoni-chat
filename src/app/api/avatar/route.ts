@@ -53,3 +53,18 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+export async function DELETE(req: Request) {
+  try {
+    const apiKey = req.headers.get('X-Caller-Key');
+    if (!apiKey) return NextResponse.json({ error: 'Missing API key' }, { status: 401 });
+    const user = getUserByApiKey(apiKey);
+    if (!user) return NextResponse.json({ error: 'Invalid API key' }, { status: 401 });
+
+    updateAvatar(user.username, '');
+    
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
