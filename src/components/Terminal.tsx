@@ -546,6 +546,12 @@ export default function Terminal() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const raw = input.trim();
+    
+    // Ensure focus is kept immediately after submit on mobile
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+
     if (!raw || busy) return;
 
     // Save to history
@@ -1401,7 +1407,14 @@ export default function Terminal() {
         <footer className="sfn-footer">
           <form onSubmit={handleSubmit} className="sfn-form">
             {username && (
-              <button type="button" className="sfn-upload-btn" onClick={() => { if (!activeRoom) { add('Önce bir kanala katılın.', 'error'); return; } fileInputRef.current?.click(); }} disabled={busy} title="Dosya gönder">📎</button>
+              <button 
+                type="button" 
+                className="sfn-upload-btn" 
+                onMouseDown={(e) => e.preventDefault()} 
+                onTouchStart={(e) => { e.preventDefault(); if (!activeRoom) { add('Önce bir kanala katılın.', 'error'); return; } fileInputRef.current?.click(); }}
+                onClick={(e) => { e.preventDefault(); if (!activeRoom) { add('Önce bir kanala katılın.', 'error'); return; } fileInputRef.current?.click(); }} 
+                disabled={busy} 
+                title="Dosya gönder">📎</button>
             )}
             <input ref={inputRef} type="text" className="sfn-input" value={input}
               onChange={e => handleInputChange(e.target.value)}
@@ -1411,7 +1424,18 @@ export default function Terminal() {
               }}
               autoFocus spellCheck={false} autoComplete="off" autoCapitalize="off"
               placeholder={busy ? 'İşleniyor...' : activeRoom ? (activeRoom.name.startsWith('dm-') ? `${activeRoom.name.replace('dm-', '').replace(`-${username}`, '').replace(`${username}-`, '')} ile mesajlaş...` : `#${activeRoom.name} kanalına mesaj yaz...`) : 'DM için sidebar\'dan kişi seç...'} disabled={busy} />
-            <button type="submit" className="sfn-send-btn" disabled={busy || !input.trim()}>
+            <button 
+              type="submit" 
+              className="sfn-send-btn" 
+              disabled={busy || !input.trim()}
+              onMouseDown={(e) => e.preventDefault()}
+              onTouchStart={(e) => {
+                e.preventDefault();
+                if (!busy && input.trim()) {
+                  handleSubmit(e as any);
+                }
+              }}
+            >
               <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
             </button>
           </form>
