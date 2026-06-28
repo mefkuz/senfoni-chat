@@ -1227,12 +1227,13 @@ export default function Terminal() {
             {voiceState.localScreenStream && (
               <div 
                 onClick={(e) => { 
-                  const v = e.currentTarget.querySelector('video'); 
-                  if (v) {
-                    if (v.requestFullscreen) v.requestFullscreen().catch(()=>{}); 
-                    else if ((v as any).webkitRequestFullscreen) (v as any).webkitRequestFullscreen(); 
-                    v.play().catch(()=>{}); 
-                  } 
+                  const container = e.currentTarget;
+                  const v = container.querySelector('video'); 
+                  if (container) {
+                    if (container.requestFullscreen) container.requestFullscreen().catch(()=>{}); 
+                    else if ((container as any).webkitRequestFullscreen) (container as any).webkitRequestFullscreen(); 
+                  }
+                  if (v) v.play().catch(()=>{}); 
                 }}
                 style={{ flex: '1 1 300px', minWidth: '300px', maxWidth: '600px', background: '#000', borderRadius: '8px', overflow: 'hidden', position: 'relative', border: '2px solid var(--primary)', cursor: 'pointer', transition: 'all 0.2s ease' }}
                 onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.02)'; e.currentTarget.style.zIndex = '20'; }}
@@ -1253,7 +1254,7 @@ export default function Terminal() {
                       v.play().catch(() => {});
                     }
                   }} 
-                  style={{ width: '100%', display: 'block' }}
+                  style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
                 />
               </div>
             )}
@@ -1261,12 +1262,13 @@ export default function Terminal() {
               <div 
                 key={rs.peerId} 
                 onClick={(e) => { 
-                  const v = e.currentTarget.querySelector('video'); 
-                  if (v) {
-                    if (v.requestFullscreen) v.requestFullscreen().catch(()=>{}); 
-                    else if ((v as any).webkitRequestFullscreen) (v as any).webkitRequestFullscreen(); 
-                    v.play().catch(()=>{}); 
-                  } 
+                  const container = e.currentTarget;
+                  const v = container.querySelector('video'); 
+                  if (container) {
+                    if (container.requestFullscreen) container.requestFullscreen().catch(()=>{}); 
+                    else if ((container as any).webkitRequestFullscreen) (container as any).webkitRequestFullscreen(); 
+                  }
+                  if (v) v.play().catch(()=>{}); 
                 }}
                 style={{ flex: '1 1 300px', minWidth: '300px', maxWidth: '600px', background: '#000', borderRadius: '8px', overflow: 'hidden', position: 'relative', cursor: 'pointer', border: '1px solid var(--border)', transition: 'all 0.2s ease' }}
                 onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.02)'; e.currentTarget.style.zIndex = '20'; }}
@@ -1286,7 +1288,7 @@ export default function Terminal() {
                       v.play().catch(() => {});
                     }
                   }} 
-                  style={{ width: '100%', display: 'block' }}
+                  style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
                 />
               </div>
             ))}
