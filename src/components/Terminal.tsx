@@ -5,7 +5,7 @@ import { encryptMessage, decryptMessage, deriveKey, encryptFile, decryptFile, b6
 import { POLLING_INTERVAL_MS, SESSION_TIMEOUT_MS, APP_VERSION, MAX_FILE_SIZE_BYTES } from '@/lib/constants';
 import { useVoiceChat } from '@/hooks/useVoiceChat';
 
-interface LogEntry { id: string; text: string; type: 'system'|'user'|'admin'|'error'|'msg'|'success'|'warn'; time: string; isOwn?: boolean; status?: 'sending'|'sent'; file?: { id: string, name: string, type: string, size: number, dataUrl?: string, loading?: boolean, error?: boolean }; }
+interface LogEntry { id: string; text: string; type: 'system'|'user'|'admin'|'error'|'msg'|'success'|'warn'; time: string; isOwn?: boolean; status?: 'sending'|'sent'; file?: { id: string, name: string, type: string, size: number, dataUrl?: string, loading?: boolean, error?: boolean }; reactions?: Record<string, string[]>; }
 interface RoomInfo { name: string; roomHash: string; type?: 'text'|'voice'; activeUsers?: string[]; messageCount?: number; }
 interface ActiveRoom { name: string; hash: string; cryptoKey: CryptoKey; }
 
@@ -309,7 +309,7 @@ export default function Terminal() {
           seenIdsRef.current.add(m.id);
           try {
             const plain = await decryptMessage(m.ciphertext, m.iv, activeRoom.cryptoKey);
-            const entry: LogEntry = { id: uid(), text: `${m.sender}: ${plain}`, type: 'msg', time: new Date(m.timestamp).toLocaleTimeString('en-US', { hour12: false, hour:'2-digit', minute:'2-digit', second:'2-digit' }), isOwn: m.sender === username, status: 'sent' };
+            const entry: LogEntry = { id: m.id, text: `${m.sender}: ${plain}`, type: 'msg', time: new Date(m.timestamp).toLocaleTimeString('en-US', { hour12: false, hour:'2-digit', minute:'2-digit', second:'2-digit' }), isOwn: m.sender === username, status: 'sent', reactions: m.reactions };
             if (m.fileId) {
               entry.file = { id: m.fileId, name: m.fileName, type: m.fileType, size: m.fileSize };
               entry.text = `${m.sender}: [Sent File]`;
@@ -650,7 +650,7 @@ export default function Terminal() {
             for (const m of hist) {
               try {
                 const plain = await decryptMessage(m.ciphertext, m.iv, cKey);
-                const entry: LogEntry = { id: uid(), text: `${m.sender}: ${plain}`, type: 'msg', time: new Date(m.timestamp).toLocaleTimeString('en-US', { hour12: false, hour:'2-digit', minute:'2-digit', second:'2-digit' }), isOwn: m.sender === username, status: 'sent' };
+                const entry: LogEntry = { id: m.id, text: `${m.sender}: ${plain}`, type: 'msg', time: new Date(m.timestamp).toLocaleTimeString('en-US', { hour12: false, hour:'2-digit', minute:'2-digit', second:'2-digit' }), isOwn: m.sender === username, status: 'sent', reactions: m.reactions };
                 if (m.fileId) {
                   entry.file = { id: m.fileId, name: m.fileName, type: m.fileType, size: m.fileSize };
                   entry.text = `${m.sender}: [Sent File]`;
@@ -1205,6 +1205,30 @@ export default function Terminal() {
                     <span>{log.time}</span>
                     {isOwn && log.status === 'sending' && <span className="ll-tick sending">🕒</span>}
                     {isOwn && log.status === 'sent' && <span className="ll-tick sent">✓✓</span>}
+                  </div>
+                  {/* Reactions */}
+                  <div className="msg-reactions" style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '4px', justifyContent: isOwn ? 'flex-end' : 'flex-start' }}>
+                    {log.reactions && Object.entries(log.reactions).map(([emoji, users]) => (
+                      <span key={emoji} onClick={() => {
+                        fetch('/api/messages/react', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json', 'X-Caller-Key': apiKey! },
+                          body: JSON.stringify({ roomHash: activeRoom?.hash, messageId: log.id, emoji })
+                        });
+                      }} style={{ background: users.includes(username || '') ? 'var(--primary)' : 'var(--bg-card)', color: users.includes(username || '') ? '#fff' : 'var(--text2)', padding: '2px 6px', borderRadius: '10px', fontSize: '11px', cursor: 'pointer', border: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        {emoji} <span>{users.length}</span>
+                      </span>
+                    ))}
+                    <span onClick={(e) => {
+                      const emoji = window.prompt('Emoji (örn: 👍, ❤️, 😂, 🔥):');
+                      if (emoji) {
+                        fetch('/api/messages/react', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json', 'X-Caller-Key': apiKey! },
+                          body: JSON.stringify({ roomHash: activeRoom?.hash, messageId: log.id, emoji })
+                        });
+                      }
+                    }} style={{ background: 'var(--bg-card)', color: 'var(--text3)', padding: '2px 6px', borderRadius: '10px', fontSize: '11px', cursor: 'pointer', border: '1px dashed var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Reaksiyon Ekle">+</span>
                   </div>
                 </div>
               );

@@ -86,6 +86,7 @@ export interface MessageRecord {
   fileName?: string;
   fileType?: string;
   fileSize?: number;
+  reactions?: Record<string, string[]>;
 }
 export interface MuteRecord {
   username: string; until: number; by: string; reason: string;
@@ -258,6 +259,30 @@ export function saveMessage(msg: Omit<MessageRecord, 'id'>): MessageRecord {
   const trimmed = msgs.length > MAX_MESSAGES_PER_ROOM ? msgs.slice(-MAX_MESSAGES_PER_ROOM) : msgs;
   writeJson(f, trimmed);
   return newMsg;
+}
+
+export function toggleReaction(roomHash: string, messageId: string, username: string, emoji: string): boolean {
+  validateHash(roomHash);
+  ensureDataDir();
+  const f = path.join(MESSAGES_DIR, `${roomHash}.json`);
+  if (!fs.existsSync(f)) return false;
+  const msgs = readJson<MessageRecord[]>(f, []);
+  const msg = msgs.find(m => m.id === messageId);
+  if (!msg) return false;
+  
+  if (!msg.reactions) msg.reactions = {};
+  if (!msg.reactions[emoji]) msg.reactions[emoji] = [];
+  
+  const idx = msg.reactions[emoji].indexOf(username);
+  if (idx > -1) {
+    msg.reactions[emoji].splice(idx, 1);
+    if (msg.reactions[emoji].length === 0) delete msg.reactions[emoji];
+  } else {
+    msg.reactions[emoji].push(username);
+  }
+  
+  writeJson(f, msgs);
+  return true;
 }
 
 // ─── File Storage (E2EE encrypted blobs) ──────────────────────────────────────
