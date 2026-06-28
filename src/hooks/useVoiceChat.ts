@@ -166,7 +166,11 @@ export function useVoiceChat(
     if (signal.type === 'leave') {
       const pc = pcsRef.current.get(signal.sender);
       if (pc) { pc.close(); pcsRef.current.delete(signal.sender); }
-      setState(s => ({ ...s, peers: s.peers.filter(p => p !== signal.sender) }));
+      setState(s => ({ 
+        ...s, 
+        peers: s.peers.filter(p => p !== signal.sender),
+        remoteStreams: s.remoteStreams.filter(rs => rs.peerId !== signal.sender)
+      }));
     }
   }, [username, createPeerConnection, sendSignal]);
 

@@ -1282,7 +1282,37 @@ export default function Terminal() {
                 />
               </div>
             )}
-            {voiceState.remoteStreams.map(rs => (
+            {voiceState.remoteStreams.map(rs => {
+              const hasVideo = rs.stream.getVideoTracks().length > 0;
+              
+              if (!hasVideo) {
+                return (
+                  <div key={rs.peerId} style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--bg-card)', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                    <div style={{ position: 'relative' }}>
+                      {avatars[rs.peerId] && (
+                        <img src={avatars[rs.peerId]} alt={rs.peerId} style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} onError={(e) => { e.currentTarget.style.display = 'none'; const fallback = e.currentTarget.parentElement?.querySelector('.fallback-avatar') as HTMLElement; if (fallback) fallback.style.display = 'flex'; }} />
+                      )}
+                      <div className="fallback-avatar" style={{ display: avatars[rs.peerId] ? 'none' : 'flex', width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', color: '#fff', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', fontWeight: 'bold' }}>
+                        {rs.peerId[0].toUpperCase()}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>{rs.peerId}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span style={{ fontSize: '10px' }}>🔊</span>
+                        <input 
+                          type="range" min="0" max="1" step="0.05" defaultValue="1" 
+                          onChange={(e) => { const v = e.currentTarget.parentElement?.parentElement?.parentElement?.querySelector('video'); if (v) v.volume = parseFloat(e.currentTarget.value); }}
+                          style={{ width: '50px' }}
+                        />
+                      </div>
+                    </div>
+                    <video autoPlay playsInline style={{ display: 'none' }} ref={v => { if (v && v.srcObject !== rs.stream) { v.srcObject = rs.stream; v.play().catch(()=>{}); } }} />
+                  </div>
+                );
+              }
+
+              return (
               <div 
                 key={rs.peerId} 
                 onClick={(e) => { 
@@ -1310,7 +1340,7 @@ export default function Terminal() {
                   <div className="fallback-avatar" style={{ display: avatars[rs.peerId] ? 'none' : 'flex', width: '20px', height: '20px', borderRadius: '50%', background: 'rgba(255,255,255,0.2)', color: '#fff', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 'bold' }}>
                     {rs.peerId[0].toUpperCase()}
                   </div>
-                  <b>{rs.peerId}</b> (Canlı)
+                  <b>{rs.peerId}</b> (Canlı Ekran)
                 </div>
                 <div style={{ position: 'absolute', bottom: 8, right: 8, background: 'rgba(0,0,0,0.6)', color: '#fff', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', zIndex: 10 }}>Tam ekran için tıkla ⛶</div>
                 
@@ -1343,7 +1373,7 @@ export default function Terminal() {
                   style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
                 />
               </div>
-            ))}
+            )})}
           </div>
         )}
 
