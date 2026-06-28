@@ -258,8 +258,6 @@ export function saveMessage(msg: Omit<MessageRecord, 'id'>): MessageRecord {
   writeJson(f, trimmed);
   return newMsg;
 }
-}
-
 // ─── File Storage (E2EE encrypted blobs) ──────────────────────────────────────
 
 /**
