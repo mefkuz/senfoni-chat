@@ -1,11 +1,11 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-  --bg: #0b0d13; --bg2: #111318; --bg3: #161921;
-  --surface: #1c1f2a; --surface2: #252836;
-  --border: #2a2d3a; --border2: #363a4a;
-  --text: #e4e6ed; --text2: #8b8fa3; --text3: #5c6070;
-  --accent: #2ecc71; --accent-dim: #1a7a43; --accent-glow: rgba(46,204,113,0.15);
+  --bg: #000000; --bg2: #0a0a0a; --bg3: #111111;
+  --surface: #141414; --surface2: #1e1e1e;
+  --border: #2a2a2a; --border2: #3a3a3a;
+  --text: #ffffff; --text2: #cccccc; --text3: #888888;
+  --accent: #ffffff; --accent-dim: #888888; --accent-glow: rgba(255,255,255,0.15);
   --red: #ff4d6a; --orange: #ffaa33; --cyan: #00d4ff; --green: #2ecc71;
   --sans: 'Inter', system-ui, sans-serif;
   --mono: 'JetBrains Mono', monospace;
