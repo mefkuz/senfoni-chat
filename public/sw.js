@@ -1,4 +1,4 @@
-const CACHE_NAME = 'senfoni-chat-v3';
+const CACHE_NAME = 'senfoni-chat-v4';
 const STATIC_ASSETS = ['/', '/manifest.json'];
 
 self.addEventListener('install', (event) => {
