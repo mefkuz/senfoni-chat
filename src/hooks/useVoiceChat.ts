@@ -98,10 +98,16 @@ export function useVoiceChat(
 
     // Handle remote tracks (audio + video)
     pc.ontrack = (e) => {
-      // Create a fresh stream so React detects the reference change when tracks are added
-      const stream = new MediaStream(e.streams[0].getTracks());
       setState(s => {
-        // Remove existing stream for this peer if any
+        let stream = s.remoteStreams.find(rs => rs.peerId === peerId)?.stream;
+        if (!stream) {
+          stream = e.streams[0] || new MediaStream([e.track]);
+        } else {
+          if (!stream.getTracks().includes(e.track)) {
+            stream.addTrack(e.track);
+          }
+        }
+        
         const filtered = s.remoteStreams.filter(rs => rs.peerId !== peerId);
         return { ...s, remoteStreams: [...filtered, { peerId, stream }] };
       });
