@@ -7,9 +7,6 @@ const nextConfig: NextConfig = {
     '*.ngrok-free.dev',
     '*.ngrok-free.app',
     '*.trycloudflare.com',
-    'beardlike-unpierceable-denese.ngrok-free.dev',
-    '212.87.221.55:3000',
-    '212.87.221.55',
     'localhost:3000',
     '127.0.0.1:3000',
     'localhost',
@@ -26,9 +23,6 @@ const nextConfig: NextConfig = {
         '*.ngrok-free.dev',
         '*.ngrok-free.app',
         '*.trycloudflare.com',
-        'beardlike-unpierceable-denese.ngrok-free.dev',
-        '212.87.221.55:3000',
-        '212.87.221.55',
         'localhost:3000',
         '127.0.0.1:3000',
         'localhost',
@@ -41,3 +35,4 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+

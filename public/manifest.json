@@ -1,6 +1,6 @@
 {
   "name": "Senfoni Chat",
-  "short_name": "Senfoni",
+  "short_name": "Senfoni Chat",
   "description": "Uçtan uca şifreli güvenli mesajlaşma",
   "start_url": "/",
   "display": "standalone",

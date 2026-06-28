@@ -2,15 +2,18 @@
 
 import { useRef, useState, useCallback, useEffect } from 'react';
 
+// TURN server configuration via environment variables
+const TURN_HOST = process.env.NEXT_PUBLIC_TURN_HOST || 'localhost';
+const TURN_SECRET = process.env.NEXT_PUBLIC_TURN_SECRET || 'changeme';
+
 // Generate time-limited TURN credentials (RFC 5766 HMAC-SHA1)
 function getTurnCredentials() {
-  const secret = 'sfn_turn_s3cr3t_2024';
   const ttl = 86400; // 24h
   const unixTime = Math.floor(Date.now() / 1000) + ttl;
   const username = `${unixTime}:senfoni`;
   // Browser can't run crypto in this context, use static for now
   // In production: generate server-side via /api/turn-creds
-  return { username, credential: secret };
+  return { username, credential: TURN_SECRET };
 }
 
 const { username: TURN_USER, credential: TURN_CRED } = getTurnCredentials();
@@ -18,12 +21,12 @@ const { username: TURN_USER, credential: TURN_CRED } = getTurnCredentials();
 const ICE_SERVERS = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
-  { urls: 'stun:212.87.221.55:3478' },
+  { urls: `stun:${TURN_HOST}:3478` },
   {
     urls: [
-      'turn:212.87.221.55:3478?transport=udp',
-      'turn:212.87.221.55:3478?transport=tcp',
-      'turns:212.87.221.55:5349',
+      `turn:${TURN_HOST}:3478?transport=udp`,
+      `turn:${TURN_HOST}:3478?transport=tcp`,
+      `turns:${TURN_HOST}:5349`,
     ],
     username: TURN_USER,
     credential: TURN_CRED,

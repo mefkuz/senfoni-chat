@@ -125,6 +125,7 @@ export default function Terminal() {
     } catch {}
     return {};
   });
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleInputChange = (val: string) => {
     setInput(val);
@@ -1018,7 +1019,8 @@ export default function Terminal() {
 
   return (
     <div className="sfn-container">
-      <aside className="sfn-sidebar">
+      {isMobileMenuOpen && <div className="sfn-mobile-overlay" onClick={() => setIsMobileMenuOpen(false)} />}
+      <aside className={`sfn-sidebar ${isMobileMenuOpen ? 'open' : ''}`}>
         <div className="sb-identity">
           <div className="sb-label">HESAP</div>
           <div className="sb-user">
@@ -1038,7 +1040,7 @@ export default function Terminal() {
               const unread = (activeRoom && activeRoom.hash === r.roomHash) ? 0 : Math.max(0, (r.messageCount || 0) - (lastSeenCounts[r.roomHash] || 0));
               return (
                 <div key={r.roomHash} className={`sb-room${activeRoom?.name === r.name ? ' active' : ''}${unread > 0 ? ' unread' : ''}`}
-                  onClick={e => { e.stopPropagation(); const saved = JSON.parse(localStorage.getItem('sfn_keys') || '{}'); const key = saved[r.name]; if (key) { exec('/join', [r.name, key]); } else { setInput(`/join ${r.name} `); inputRef.current?.focus(); } }}>
+                  onClick={e => { e.stopPropagation(); setIsMobileMenuOpen(false); const saved = JSON.parse(localStorage.getItem('sfn_keys') || '{}'); const key = saved[r.name]; if (key) { exec('/join', [r.name, key]); } else { setInput(`/join ${r.name} `); inputRef.current?.focus(); } }}>
                   <span className="sb-hash">#</span><span className="sb-rname">{r.name}</span>
                   {unread > 0 && <span className="sb-unread-badge">{unread}</span>}
                   {activeRoom?.name === r.name && <span className="sb-dot" />}
@@ -1053,7 +1055,7 @@ export default function Terminal() {
             : rooms.filter(r => r.type === 'voice').map(r => (
               <div key={r.roomHash}>
                 <div className={`sb-room${activeVoiceRoom?.name === r.name ? ' active' : ''}`}
-                  onClick={e => { e.stopPropagation(); if (activeVoiceRoom?.name === r.name) { exec('/leave-voice', []); } else { const saved = JSON.parse(localStorage.getItem('sfn_keys') || '{}'); const key = saved[r.name]; if (key) { exec('/join-voice', [r.name, key]); } else { setInput(`/join-voice ${r.name} `); inputRef.current?.focus(); } } }}>
+                  onClick={e => { e.stopPropagation(); setIsMobileMenuOpen(false); if (activeVoiceRoom?.name === r.name) { exec('/leave-voice', []); } else { const saved = JSON.parse(localStorage.getItem('sfn_keys') || '{}'); const key = saved[r.name]; if (key) { exec('/join-voice', [r.name, key]); } else { setInput(`/join-voice ${r.name} `); inputRef.current?.focus(); } } }}>
                   <span className="sb-hash">🔊</span><span className="sb-rname">{r.name}</span>
                   {activeVoiceRoom?.name === r.name && <span className="sb-dot" />}
                 </div>
@@ -1064,7 +1066,7 @@ export default function Terminal() {
 
           <div className="sb-label" style={{marginTop:16}}>ÖZEL</div>
           <div className={`sb-room${activeRoom?.name === `notes-${username}` ? ' active' : ''}`}
-            onClick={e => { e.stopPropagation(); exec('/join', [`notes-${username}`, apiKey!]); }}>
+            onClick={e => { e.stopPropagation(); setIsMobileMenuOpen(false); exec('/join', [`notes-${username}`, apiKey!]); }}>
             <span className="sb-hash">🔒</span><span className="sb-rname">Kişisel Notlar</span>
             {activeRoom?.name === `notes-${username}` && <span className="sb-dot" />}
           </div>
@@ -1073,7 +1075,7 @@ export default function Terminal() {
             const dmRoom = `dm-${[username, dmUser].sort().join('-')}`;
             return (
               <div key={dmUser} className={`sb-room${activeRoom?.name === dmRoom ? ' active' : ''}`}
-                onClick={e => { e.stopPropagation(); exec('/dm', [dmUser]); }}>
+                onClick={e => { e.stopPropagation(); setIsMobileMenuOpen(false); exec('/dm', [dmUser]); }}>
                 <span className="sb-hash">💬</span><span className="sb-rname">{dmUser}</span>
                 {activeRoom?.name === dmRoom && <span className="sb-dot" />}
               </div>
@@ -1085,7 +1087,7 @@ export default function Terminal() {
               placeholder="Kullanıcı adı..."
               value={dmInput}
               onChange={e => setDmInput(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && dmInput.trim()) { exec('/dm', [dmInput.trim()]); setDmInput(''); } }}
+              onKeyDown={e => { if (e.key === 'Enter' && dmInput.trim()) { exec('/dm', [dmInput.trim()]); setDmInput(''); setIsMobileMenuOpen(false); } }}
             />
           </div>
         </div>
@@ -1107,7 +1109,12 @@ export default function Terminal() {
 
       <div className="sfn-main">
         <header className="sfn-header">
-          <div className="hdr-brand"><span>Senfoni</span> <span className="hdr-thin">Chat</span></div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <button className="sfn-mobile-toggle" onClick={() => setIsMobileMenuOpen(prev => !prev)}>
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+            </button>
+            <div className="hdr-brand"><span>Senfoni</span> <span className="hdr-thin">Chat</span></div>
+          </div>
           <div className="hdr-right">
             {activeRoom && <span className="hdr-room"><span className="hdr-dot" /> {activeRoom.name.startsWith('dm-') ? '💬 ' + activeRoom.name.replace('dm-', '').replace(`-${username}`, '').replace(`${username}-`, '') : '#' + activeRoom.name}</span>}
             {voiceState.isActive && <span className="hdr-voice">{voiceState.isMuted ? '🔇' : '🎙'}</span>}

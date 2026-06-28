@@ -194,3 +194,63 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 }
 .sb-dm-input::placeholder { color: var(--text3); }
 .sb-dm-input:focus { border-color: var(--accent); }
+
+/* Mobile Responsive Adjustments */
+.sfn-mobile-toggle {
+  display: none;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  padding: 4px;
+}
+
+.sfn-mobile-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 998;
+}
+
+@media (max-width: 768px) {
+  .sfn-sidebar {
+    position: fixed;
+    top: 0;
+    left: -260px;
+    bottom: 0;
+    z-index: 999;
+    transition: left 0.3s ease;
+  }
+  
+  .sfn-sidebar.open {
+    left: 0;
+  }
+  
+  .sfn-mobile-overlay {
+    display: block; /* shown only when rendered conditionally in React */
+  }
+
+  .sfn-mobile-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Make header elements slightly smaller or wrap */
+  .hdr-right {
+    gap: 8px;
+    font-size: 0.65rem;
+  }
+  .hdr-ver {
+    display: none; /* hide version to save space */
+  }
+
+  /* Adjust chat bubbles for narrower screens */
+  .ll.msg {
+    max-width: 85%;
+  }
+}
