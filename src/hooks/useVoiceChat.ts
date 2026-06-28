@@ -91,6 +91,11 @@ export function useVoiceChat(
       streamRef.current.getTracks().forEach(track => pc.addTrack(track, streamRef.current!));
     }
 
+    // Add local screen tracks if we are already sharing
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach(track => pc.addTrack(track, streamRef.current!));
+    }
+
     // Handle remote tracks (audio + video)
     pc.ontrack = (e) => {
       setState(s => {

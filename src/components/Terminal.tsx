@@ -1131,7 +1131,7 @@ export default function Terminal() {
               <div className="fallback" style={{ display: avatars[username] ? 'none' : 'block' }}>{username[0].toUpperCase()}</div>
             </div>
             <div>
-              <div style={{display:'flex',alignItems:'center',gap:6}}>{username} {role === 'admin' && <span className="badge-mod">MOD</span>}</div>
+              <div style={{display:'flex',alignItems:'center',gap:6}}>{username}</div>
               <div style={{fontSize:'0.65rem',color:'var(--text3)',marginTop:2}}>{role === 'admin' ? 'Moderatör' : 'Üye'}</div>
             </div>
           </div>
