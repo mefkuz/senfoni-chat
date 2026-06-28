@@ -198,7 +198,10 @@ export function useVoiceChat(
       sendSignal('announce', '{}');
 
     } catch (err: any) {
-      const msg = err?.message?.includes('Permission') ? 'Microphone permission denied.' : 'Failed to access microphone.';
+      let msg = err?.message?.includes('Permission') ? 'Mikrofon izni reddedildi.' : 'Mikrofona erişilemedi.';
+      if (!navigator.mediaDevices) {
+        msg = 'Güvenli bağlantı (HTTPS) olmadan mikrofon kullanılamaz! Tarayıcın bunu engelledi.';
+      }
       addLog(`ERR: ${msg}`, 'error');
       setState(s => ({ ...s, error: msg }));
     }

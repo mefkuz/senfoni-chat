@@ -244,7 +244,16 @@ export default function Terminal() {
   );
 
   const prevPeersRef = useRef(0);
+  const prevActiveRef = useRef(false);
   useEffect(() => {
+    // Play for our own join/leave
+    if (voiceState.isActive && !prevActiveRef.current) {
+      playVoiceJoinSound();
+    } else if (!voiceState.isActive && prevActiveRef.current) {
+      playVoiceLeaveSound();
+    }
+
+    // Play for peers joining/leaving
     if (voiceState.isActive) {
       if (voiceState.peers.length > prevPeersRef.current) {
         playVoiceJoinSound();
@@ -255,6 +264,7 @@ export default function Terminal() {
     } else {
       prevPeersRef.current = 0;
     }
+    prevActiveRef.current = voiceState.isActive;
   }, [voiceState.peers, voiceState.isActive]);
 
   const hasCheckedSetup = useRef(false);
@@ -1216,12 +1226,18 @@ export default function Terminal() {
           {voiceState.isActive && voiceState.remoteStreams && voiceState.remoteStreams.length > 0 && (
             <div style={{ display: 'flex', gap: '8px', padding: '16px', background: 'var(--bg-sidebar)', borderBottom: '1px solid var(--border)', overflowX: 'auto', flexWrap: 'wrap' }}>
               {voiceState.remoteStreams.map(rs => (
-                <div key={rs.peerId} style={{ flex: '1 1 300px', minWidth: '300px', maxWidth: '600px', background: '#000', borderRadius: '8px', overflow: 'hidden', position: 'relative' }}>
+                <div key={rs.peerId} onClick={(e) => { const v = e.currentTarget.querySelector('video'); if (v) v.play().catch(()=>{}); }} style={{ flex: '1 1 300px', minWidth: '300px', maxWidth: '600px', background: '#000', borderRadius: '8px', overflow: 'hidden', position: 'relative', cursor: 'pointer' }}>
                   <div style={{ position: 'absolute', top: 8, left: 8, background: 'rgba(0,0,0,0.6)', color: '#fff', padding: '2px 8px', borderRadius: '4px', fontSize: '0.8rem', zIndex: 10 }}>{rs.peerId} (Canlı)</div>
+                  <div style={{ position: 'absolute', bottom: 8, right: 8, background: 'rgba(0,0,0,0.6)', color: '#fff', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', zIndex: 10 }}>Ses yoksa tıkla</div>
                   <video 
                     autoPlay 
                     playsInline 
-                    ref={v => { if (v && v.srcObject !== rs.stream) v.srcObject = rs.stream; }} 
+                    ref={v => { 
+                      if (v && v.srcObject !== rs.stream) {
+                        v.srcObject = rs.stream;
+                        v.play().catch(() => {});
+                      }
+                    }} 
                     style={{ width: '100%', display: 'block' }}
                   />
                 </div>
