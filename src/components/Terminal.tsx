@@ -1240,7 +1240,7 @@ export default function Terminal() {
                 onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.zIndex = '1'; }}
               >
                 <div style={{ position: 'absolute', top: 8, left: 8, background: 'var(--primary)', color: '#fff', padding: '4px 10px', borderRadius: '20px', fontSize: '0.85rem', zIndex: 10, display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.5)' }}>
-                  <img src={`/api/avatar?username=${username}`} alt={username || ''} style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#fff' }} />
+                  {username && avatars[username] && <img src={avatars[username]} alt={username || ''} style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#fff', objectFit: 'cover' }} />}
                   <b>{username}</b> (Sen)
                 </div>
                 <div style={{ position: 'absolute', bottom: 8, right: 8, background: 'rgba(0,0,0,0.6)', color: '#fff', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', zIndex: 10 }}>Büyütmek için tıkla ⛶</div>
@@ -1275,7 +1275,7 @@ export default function Terminal() {
                 onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.zIndex = '1'; }}
               >
                 <div style={{ position: 'absolute', top: 8, left: 8, background: 'rgba(0,0,0,0.7)', color: '#fff', padding: '4px 10px', borderRadius: '20px', fontSize: '0.85rem', zIndex: 10, display: 'flex', alignItems: 'center', gap: '8px', backdropFilter: 'blur(4px)' }}>
-                  <img src={`/api/avatar?username=${rs.peerId}`} alt={rs.peerId} style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#fff' }} />
+                  {avatars[rs.peerId] && <img src={avatars[rs.peerId]} alt={rs.peerId} style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#fff', objectFit: 'cover' }} />}
                   <b>{rs.peerId}</b> (Canlı)
                 </div>
                 <div style={{ position: 'absolute', bottom: 8, right: 8, background: 'rgba(0,0,0,0.6)', color: '#fff', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', zIndex: 10 }}>Ses veya tam ekran için tıkla ⛶</div>
