@@ -251,14 +251,21 @@ export function useVoiceChat(
   const shareScreen = useCallback(async () => {
     if (!activeRef.current || state.isScreenSharing) return;
     
-    // Check if screen sharing is supported (not available on most mobile browsers)
-    if (!navigator.mediaDevices?.getDisplayMedia) {
-      addLog('ERR: Ekran paylaşımı bu cihazda desteklenmiyor. Masaüstü tarayıcı kullanın.', 'error');
+    let screenStream: MediaStream;
+    try {
+      // Check if screen sharing is supported (not available on most mobile browsers)
+      if (!navigator.mediaDevices?.getDisplayMedia) {
+        addLog('Mobilde ekran paylaşılamadığı için bunun yerine ön kamera açılıyor...', 'system');
+        screenStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+      } else {
+        screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+      }
+    } catch (err) {
+      addLog('Yayın iptal edildi veya izin verilmedi.', 'error');
       return;
     }
-    
+
     try {
-      const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
       const screenTrack = screenStream.getVideoTracks()[0];
       screenStreamRef.current = screenStream;
       
