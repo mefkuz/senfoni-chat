@@ -1306,7 +1306,25 @@ export default function Terminal() {
                   </div>
                   <b>{rs.peerId}</b> (Canlı)
                 </div>
-                <div style={{ position: 'absolute', bottom: 8, right: 8, background: 'rgba(0,0,0,0.6)', color: '#fff', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', zIndex: 10 }}>Ses veya tam ekran için tıkla ⛶</div>
+                <div style={{ position: 'absolute', bottom: 8, right: 8, background: 'rgba(0,0,0,0.6)', color: '#fff', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', zIndex: 10 }}>Tam ekran için tıkla ⛶</div>
+                
+                {/* Volume Control */}
+                <div 
+                  style={{ position: 'absolute', bottom: 8, left: 8, background: 'rgba(0,0,0,0.7)', padding: '4px 8px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '8px', zIndex: 20 }}
+                  onClick={(e) => e.stopPropagation()} /* Prevent fullscreen trigger when adjusting volume */
+                >
+                  <span style={{ fontSize: '12px', color: '#fff' }}>🔊</span>
+                  <input 
+                    type="range" 
+                    min="0" max="1" step="0.05" defaultValue="1" 
+                    onChange={(e) => {
+                      const v = e.currentTarget.parentElement?.parentElement?.querySelector('video');
+                      if (v) v.volume = parseFloat(e.currentTarget.value);
+                    }}
+                    style={{ width: '60px', cursor: 'pointer' }}
+                  />
+                </div>
+
                 <video 
                   autoPlay 
                   playsInline 
