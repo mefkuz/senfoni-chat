@@ -40,6 +40,7 @@ interface VoiceState {
   peers: string[];
   error: string | null;
   remoteStreams: { peerId: string; stream: MediaStream }[];
+  isScreenSharing: boolean;
 }
 
 export function useVoiceChat(
@@ -47,7 +48,7 @@ export function useVoiceChat(
   apiKey: string | null,
   addLog: (text: string, type?: string) => void,
 ) {
-  const [state, setState] = useState<VoiceState>({ isActive: false, isMuted: false, peers: [], error: null, remoteStreams: [] });
+  const [state, setState] = useState<VoiceState>({ isActive: false, isMuted: false, peers: [], error: null, remoteStreams: [], isScreenSharing: false });
   const pcsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
   const streamRef = useRef<MediaStream | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -62,7 +63,7 @@ export function useVoiceChat(
     pcsRef.current.clear();
     streamRef.current?.getTracks().forEach(t => t.stop());
     streamRef.current = null;
-    setState({ isActive: false, isMuted: false, peers: [], error: null, remoteStreams: [] });
+    setState({ isActive: false, isMuted: false, peers: [], error: null, remoteStreams: [], isScreenSharing: false });
     activeRoomHashRef.current = null;
   }, []);
 
@@ -168,7 +169,7 @@ export function useVoiceChat(
       activeRef.current = true;
       sinceRef.current = Date.now();
 
-      setState({ isActive: true, isMuted: false, peers: [], error: null });
+      setState({ isActive: true, isMuted: false, peers: [], error: null, remoteStreams: [], isScreenSharing: false });
       addLog('VOICE: Microphone active. Connecting...', 'success');
 
       // Start polling for signaling messages
@@ -223,11 +224,13 @@ export function useVoiceChat(
 
   
   const shareScreen = useCallback(async () => {
-    if (!activeRef.current) return;
+    if (!activeRef.current || state.isScreenSharing) return;
     try {
       const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
       const screenTrack = screenStream.getVideoTracks()[0];
       
+      setState(s => ({ ...s, isScreenSharing: true }));
+
       screenTrack.onended = () => {
         // Stop sharing
         pcsRef.current.forEach(pc => {
@@ -235,6 +238,7 @@ export function useVoiceChat(
           const sender = senders.find(s => s.track?.kind === 'video');
           if (sender) pc.removeTrack(sender);
         });
+        setState(s => ({ ...s, isScreenSharing: false }));
       };
 
       pcsRef.current.forEach(pc => {

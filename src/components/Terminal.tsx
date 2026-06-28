@@ -1132,25 +1132,10 @@ export default function Terminal() {
               <button onClick={() => toggleMute()} style={{ flex: 1, padding: '4px', background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '4px', cursor: 'pointer' }}>
                 {voiceState.isMuted ? 'Mikrofonu Aç' : 'Sustur'}
               </button>
-              <button onClick={() => shareScreen && shareScreen()} style={{ flex: 1, padding: '4px', background: 'var(--bg-card)', border: '1px solid var(--border)', color: 'var(--text)', borderRadius: '4px', cursor: 'pointer' }}>
-                Ekran Paylaş
+              <button onClick={() => shareScreen && shareScreen()} disabled={voiceState.isScreenSharing} style={{ flex: 1, padding: '4px', background: voiceState.isScreenSharing ? 'var(--primary)' : 'var(--bg-card)', border: '1px solid var(--border)', color: voiceState.isScreenSharing ? '#fff' : 'var(--text)', borderRadius: '4px', cursor: voiceState.isScreenSharing ? 'not-allowed' : 'pointer' }}>
+                {voiceState.isScreenSharing ? 'Paylaşılıyor' : 'Ekran Paylaş'}
               </button>
             </div>
-            {voiceState.remoteStreams && voiceState.remoteStreams.length > 0 && (
-              <div style={{ marginTop: '12px' }}>
-                <div className="sb-label" style={{ marginBottom: '4px' }}>YAYINLAR</div>
-                {voiceState.remoteStreams.map(rs => (
-                  <video 
-                    key={rs.peerId} 
-                    autoPlay 
-                    playsInline 
-                    ref={v => { if (v && v.srcObject !== rs.stream) v.srcObject = rs.stream; }} 
-                    style={{ width: '100%', borderRadius: '4px', background: '#000', marginBottom: '8px' }}
-                    title={rs.peerId}
-                  />
-                ))}
-              </div>
-            )}
           </div>
         )}
 
@@ -1178,6 +1163,21 @@ export default function Terminal() {
         </header>
 
         <main className="sfn-output" ref={outputRef}>
+          {voiceState.isActive && voiceState.remoteStreams && voiceState.remoteStreams.length > 0 && (
+            <div style={{ display: 'flex', gap: '8px', padding: '16px', background: 'var(--bg-sidebar)', borderBottom: '1px solid var(--border)', overflowX: 'auto', flexWrap: 'wrap' }}>
+              {voiceState.remoteStreams.map(rs => (
+                <div key={rs.peerId} style={{ flex: '1 1 300px', minWidth: '300px', maxWidth: '600px', background: '#000', borderRadius: '8px', overflow: 'hidden', position: 'relative' }}>
+                  <div style={{ position: 'absolute', top: 8, left: 8, background: 'rgba(0,0,0,0.6)', color: '#fff', padding: '2px 8px', borderRadius: '4px', fontSize: '0.8rem', zIndex: 10 }}>{rs.peerId} (Canlı)</div>
+                  <video 
+                    autoPlay 
+                    playsInline 
+                    ref={v => { if (v && v.srcObject !== rs.stream) v.srcObject = rs.stream; }} 
+                    style={{ width: '100%', display: 'block' }}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
           {logs.map(log => {
             const isMentioned = username && log.text.toLowerCase().includes(`@${username.toLowerCase()}`);
             const isMsg = log.type === 'msg';
