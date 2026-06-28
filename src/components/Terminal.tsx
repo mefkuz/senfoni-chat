@@ -52,6 +52,42 @@ function playNotificationSound(isMention: boolean = false) {
     }
   } catch {}
 }
+function playVoiceJoinSound() {
+  if (typeof window === 'undefined') return;
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(440, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.1);
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.1, ctx.currentTime + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.3);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.3);
+  } catch {}
+}
+function playVoiceLeaveSound() {
+  if (typeof window === 'undefined') return;
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.1);
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.1, ctx.currentTime + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.3);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.3);
+  } catch {}
+}
 
 function requestNotificationPermission() {
   if (typeof window !== 'undefined' && 'Notification' in window) {
@@ -207,6 +243,20 @@ export default function Terminal() {
     username, apiKey, add as any
   );
 
+  const prevPeersRef = useRef(0);
+  useEffect(() => {
+    if (voiceState.isActive) {
+      if (voiceState.peers.length > prevPeersRef.current) {
+        playVoiceJoinSound();
+      } else if (voiceState.peers.length < prevPeersRef.current) {
+        playVoiceLeaveSound();
+      }
+      prevPeersRef.current = voiceState.peers.length;
+    } else {
+      prevPeersRef.current = 0;
+    }
+  }, [voiceState.peers, voiceState.isActive]);
+
   const hasCheckedSetup = useRef(false);
 
   // Setup Check
@@ -279,7 +329,7 @@ export default function Terminal() {
       } catch {}
     };
     f();
-    const t = setInterval(f, 8000);
+    const t = setInterval(f, 2000);
     return () => clearInterval(t);
   }, [apiKey]);
 
