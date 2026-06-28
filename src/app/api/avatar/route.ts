@@ -16,8 +16,8 @@ export async function POST(req: Request) {
 
     const buffer = Buffer.from(await file.arrayBuffer());
     
-    // Ensure public/avatars exists
-    const avatarsDir = path.join(process.cwd(), 'public', 'avatars');
+    // Ensure data/avatars exists
+    const avatarsDir = path.join(process.cwd(), 'data', 'avatars');
     if (!fs.existsSync(avatarsDir)) {
       fs.mkdirSync(avatarsDir, { recursive: true });
     }
@@ -28,7 +28,7 @@ export async function POST(req: Request) {
     
     fs.writeFileSync(filePath, buffer);
     
-    const avatarUrl = `/avatars/${fileName}`;
+    const avatarUrl = `/api/avatars/${fileName}`;
     updateAvatar(user.username, avatarUrl);
     
     return NextResponse.json({ success: true, avatarUrl });
