@@ -19,6 +19,7 @@ Senfoni Chat is an ultra-secure, terminal-styled messaging platform designed for
 *   🛡️ **AEAD Disk Encryption:** All server-side records (users, room hashes, presence logs) are encrypted at rest using server-managed AES-256-GCM.
 *   🎙️ **P2P Voice Channels (Discord-style):** Independent voice and text channels. Chat in text channels while securely talking in P2P voice channels. *Note: TURN server integration is recommended to mask WebRTC IP addresses.*
 *   💻 **Hacker/Retro Terminal Interface:** A distraction-free, pure Command Line Interface (CLI) experience with smart scrolling, command history, and custom syntax highlighting.
+*   📱 **Mobile-Ready PWA:** Installable Progressive Web App with a responsive sidebar and touch-friendly interface for chatting on the go.
 *   📝 **Private E2EE Notes:** A dedicated `notes-[username]` channel exclusively encrypted for your own keys.
 *   ⚡ **Dynamic Setup Protocol:** Zero hardcoded keys. The system auto-generates server encryption configurations on first launch, ensuring maximum open-source safety.
 
