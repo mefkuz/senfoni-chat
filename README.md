@@ -17,11 +17,12 @@ Senfoni Chat is an ultra-secure, terminal-styled messaging platform designed for
 
 *   🔒 **End-to-End Encryption (E2EE):** All messages are encrypted directly in the browser using AES-GCM-256 before being transmitted. The server never has access to plain text (Zero-Knowledge Principle).
 *   🛡️ **AEAD Disk Encryption:** All server-side records (users, room hashes, presence logs) are encrypted at rest using server-managed AES-256-GCM.
-*   🎙️ **P2P Voice Channels (Discord-style):** Independent voice and text channels. Chat in text channels while securely talking in P2P voice channels. *Note: TURN server integration is recommended to mask WebRTC IP addresses.*
+*   🎙️ **P2P Voice & Video Channels:** Independent voice/video channels with native Screen Sharing capabilities and late-joiner state synchronization.
 *   💻 **Hacker/Retro Terminal Interface:** A distraction-free, pure Command Line Interface (CLI) experience with smart scrolling, command history, and custom syntax highlighting.
-*   📱 **Mobile-Ready PWA:** Installable Progressive Web App with a responsive sidebar and touch-friendly interface for chatting on the go.
+*   📱 **Mobile-Ready PWA:** Installable Progressive Web App with a responsive sidebar, mobile-optimized audio routing (no earpiece glitches!), and touch-friendly UI.
 *   📝 **Private E2EE Notes:** A dedicated `notes-[username]` channel exclusively encrypted for your own keys.
 *   ⚡ **Dynamic Setup Protocol:** Zero hardcoded keys. The system auto-generates server encryption configurations on first launch, ensuring maximum open-source safety.
+*   🌐 **Carrier-Grade NAT Support:** Integrated, statically-authenticated TURN server configurations ensure mobile devices on 4G/5G can connect seamlessly.
 
 ---
 
@@ -90,6 +91,7 @@ As the administrator, you manage the platform:
 | `/join-voice [room] [key]`| Enter a P2P voice channel. |
 | `/leave-voice` | Leave the active voice channel. |
 | `/voice-mute` | Toggle your microphone on/off. |
+| `/share-screen` | Broadcast your screen (Desktop only) to everyone in the voice channel. |
 | `/rooms` | List all available rooms. |
 | `/whoami` | Display identity, roles, and active connections. |
 | `/clear` | Clear the terminal screen buffer. |
