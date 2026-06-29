@@ -23,14 +23,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ valid: false, error: 'INVALID_API_KEY' }, { status: 401 });
     }
 
-    // Auto-populate all keys for admins/moderators
+    // Auto-populate all keys for all users
     const roomKeys = { ...(user.roomKeys || {}) };
-    if (user.role === 'admin') {
-      const rooms = getAllRooms();
-      for (const r of rooms) {
-        if (r.roomKey) {
-          roomKeys[r.name] = r.roomKey;
-        }
+    const rooms = getAllRooms();
+    for (const r of rooms) {
+      if (r.roomKey) {
+        roomKeys[r.name] = r.roomKey;
       }
     }
 
