@@ -1021,7 +1021,11 @@ export default function Terminal() {
   useEffect(() => {
     if (username && apiKey) {
       const lastRoom = localStorage.getItem('sfn_last_room');
-      const lastRoomKey = localStorage.getItem('sfn_last_room_key');
+      // Prefer the key from sfn_keys (synced from server) over sfn_last_room_key (may be stale)
+      const savedKeys = JSON.parse(localStorage.getItem('sfn_keys') || '{}');
+      const lastRoomKey = lastRoom && savedKeys[lastRoom]
+        ? savedKeys[lastRoom]
+        : localStorage.getItem('sfn_last_room_key');
       if (lastRoom && lastRoomKey && !activeRoom) {
           exec('/join', [lastRoom, lastRoomKey]);
       }
