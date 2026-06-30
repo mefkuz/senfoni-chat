@@ -349,7 +349,9 @@ export default function Terminal() {
     const poll = async () => {
       try {
         const currentLastPoll = lastPollRef.current;
-        const r = await fetch(`/api/messages?room=${activeRoom.hash}&since=${currentLastPoll}&_t=${Date.now()}`);
+        const r = await fetch(`/api/messages?room=${activeRoom.hash}&since=${currentLastPoll}&_t=${Date.now()}`, {
+          headers: { 'X-Caller-Key': apiKey }
+        });
         
         // Parse active typing users list from response custom header
         const typingHeader = r.headers.get('X-Typing-Users');
@@ -469,6 +471,7 @@ export default function Terminal() {
     try {
       const buffer = await file.arrayBuffer();
       const enc = await encryptFile(buffer, activeRoom.cryptoKey);
+      const textEnc = await encryptMessage(`[Sent File: ${file.name}]`, activeRoom.cryptoKey);
       
       const res = await fetch('/api/upload', {
         method: 'POST',
@@ -480,7 +483,9 @@ export default function Terminal() {
           fileType: file.type || 'application/octet-stream',
           fileSize: file.size,
           encryptedData: enc.ciphertext,
-          encryptedIv: enc.iv
+          encryptedIv: enc.iv,
+          textCiphertext: textEnc.ciphertext,
+          textIv: textEnc.iv
         }),
       });
       const d = await res.json();

@@ -4,6 +4,11 @@ import { getUserByApiKey, getMessages, saveMessage, isMuted, isKicked, getTyping
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
+  const callerKey = request.headers.get('X-Caller-Key');
+  if (!callerKey) return NextResponse.json({ error: 'AUTH_REQUIRED' }, { status: 401 });
+  const user = getUserByApiKey(callerKey);
+  if (!user) return NextResponse.json({ error: 'INVALID_API_KEY' }, { status: 401 });
+
   const { searchParams } = new URL(request.url);
   const room = searchParams.get('room');
   const since = searchParams.get('since');

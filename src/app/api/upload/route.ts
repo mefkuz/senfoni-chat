@@ -16,7 +16,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { room, encryptedData, encryptedIv, fileName, fileType, fileSize, sender } = body;
+    const { room, encryptedData, encryptedIv, textCiphertext, textIv, fileName, fileType, fileSize, sender } = body;
 
     if (!room || !encryptedData || !encryptedIv || !fileName || !fileType || !sender) {
       return NextResponse.json({ error: 'MISSING_FIELDS' }, { status: 400 });
@@ -59,8 +59,8 @@ export async function POST(request: Request) {
     // Save a message record referencing the file so it shows in chat history
     const msg = saveMessage({
       room,
-      ciphertext: encryptedData,
-      iv: encryptedIv,
+      ciphertext: textCiphertext || encryptedData, // Fallback for old clients
+      iv: textIv || encryptedIv,
       sender,
       timestamp: Date.now(),
       fileId: fileRecord.id,
