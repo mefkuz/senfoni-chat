@@ -3,7 +3,7 @@
  * Lists all available rooms. Requires a valid API key.
  */
 import { NextResponse } from 'next/server';
-import { getAllRooms, getUserByApiKey, getVoicePresence } from '@/lib/db';
+import { getAllRooms, getUserByApiKey, getVoicePresence, updateUserRoomInfo, leaveUserRoom } from '@/lib/db';
 
 const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
 
@@ -32,3 +32,30 @@ export async function GET(request: Request) {
 
   return NextResponse.json({ rooms });
 }
+
+export async function POST(request: Request) {
+  const callerKey = request.headers.get('X-Caller-Key');
+  if (!callerKey) return NextResponse.json({ error: 'AUTH_REQUIRED' }, { status: 401 });
+
+  const user = getUserByApiKey(callerKey);
+  if (!user) return NextResponse.json({ error: 'INVALID_API_KEY' }, { status: 401 });
+
+  try {
+    const body = await request.json();
+    const { action, roomName, roomKey } = body;
+
+    if (action === 'join') {
+      if (!roomName || !roomKey) return NextResponse.json({ error: 'MISSING_PARAMS' }, { status: 400 });
+      updateUserRoomInfo(user.username, roomName, roomKey);
+      return NextResponse.json({ success: true });
+    } else if (action === 'leave') {
+      leaveUserRoom(user.username);
+      return NextResponse.json({ success: true });
+    }
+
+    return NextResponse.json({ error: 'INVALID_ACTION' }, { status: 400 });
+  } catch {
+    return NextResponse.json({ error: 'BAD_REQUEST' }, { status: 400 });
+  }
+}
+

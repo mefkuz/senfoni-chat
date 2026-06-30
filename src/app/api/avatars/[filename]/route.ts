@@ -5,8 +5,9 @@ import path from 'path';
 export async function GET(req: Request, { params }: { params: Promise<{ filename: string }> }) {
   try {
     const filename = (await params).filename;
+    const sanitizedFilename = path.basename(filename);
     const avatarsDir = path.join(process.cwd(), 'data', 'avatars');
-    const filePath = path.join(avatarsDir, filename);
+    const filePath = path.join(avatarsDir, sanitizedFilename);
 
     if (!fs.existsSync(filePath)) {
       return new NextResponse(null, { status: 404 });
